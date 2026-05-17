@@ -207,7 +207,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
 <div id="setup-screen">
   <div class="setup-card">
-    <h1>NEN Gear List Generator</h1>
+    <h1>NEN Gear List Generator <span style="font-weight:400;opacity:.5;font-size:10px;letter-spacing:.02em" id="version-tag"></span></h1>
     <p class="sub">Shared gear catalogue and shoot pack list tool for the NEN team.</p>
     <div class="mode-toggle">
       <button class="mode-btn active" id="mode-admin-btn" onclick="setMode('admin')">&#128273; Admin</button>
@@ -223,6 +223,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       <div class="field"><label>JSONBin Master Key</label>
         <input type="password" id="admin-key" placeholder="$2a$10$..." />
         <p class="hint">Stored only in this browser. Never shared.</p>
+      </div>
+      <div class="field"><label>Bin ID <span style="font-weight:400;color:var(--text3)">(paste existing to reconnect)</span></label>
+        <input type="text" id="bin-id-manual" placeholder="Leave blank to create a new catalogue" />
+        <p class="hint">Paste your existing Bin ID here when updating the app so your catalogue is never lost.</p>
       </div>
       <div class="field" id="bin-id-field" style="display:none"><label>Bin ID</label>
         <input type="text" id="bin-id-input" readonly onclick="this.select()" />
@@ -280,6 +284,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
             <button class="tool-btn" onclick="openModal('cat-modal')">Categories</button>
             <button class="tool-btn" onclick="exportCSV()">CSV export</button>
             <button class="tool-btn" onclick="openModal('csv-modal')">CSV import</button>
+          </div>
+          <div class="tools-row" style="margin-top:4px">
+            <button class="tool-btn" onclick="selectAllCatalogue()" id="select-all-btn">Select all</button>
+            <button class="tool-btn" id="delete-selected-btn" onclick="deleteSelectedItems()" style="display:none;color:var(--red)">Delete selected</button>
           </div>
           <div id="req-admin-wrap"></div>
         </div>
@@ -442,6 +450,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
+var VERSION = 'v1.1';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -505,8 +514,8 @@ async function adminConnect(){
   try{
     var rawStored=localStorage.getItem('nen3_binId')||'';
     var storedBin=(rawStored&&rawStored!=='undefined'&&rawStored!=='null')?rawStored:'';
-    var manualBin=$('bin-id-input').value.trim();
-    var existing=(manualBin&&manualBin!=='undefined')?manualBin:storedBin;
+    var manualBin=($('bin-id-manual')&&$('bin-id-manual').value.trim())||'';
+    var existing=(manualBin&&manualBin!=='undefined'&&manualBin!=='null')?manualBin:storedBin;
     S.apiKey=key; S.mode='admin'; S.userName='Admin';
     if(existing){
       S.binId=existing; saveLocal();
@@ -570,6 +579,7 @@ async function launchApp(){
   $('share-btn').style.display=adm?'':'none';
   $('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
   $('shoot-date').value=new Date().toISOString().slice(0,10);
+  var vt=$('version-tag'); if(vt) vt.textContent=VERSION;
   loadMyListsLocal(); loadCacheLocal();
   if(S.cachedBinData) applyBinData(S.cachedBinData);
   await syncAll();
@@ -774,15 +784,19 @@ function toggleBatch(itemId){
   var n=S.batchSelected.length;
   $('batch-bar').style.display=n>0?'flex':'none';
   $('batch-count').textContent=n+' selected';
+  var dsd=$('delete-selected-btn'); if(dsd) dsd.style.display=n>0&&S.mode==='admin'?'':'none';
   var chk=document.querySelector('[data-checkid="'+itemId+'"]');
   if(chk) chk.checked=S.batchSelected.indexOf(itemId)>=0;
 }
-function clearBatch(){ S.batchSelected=[]; $('batch-bar').style.display='none'; renderCatalogue(); }
+function clearBatch(){ S.batchSelected=[]; $('batch-bar').style.display='none'; var dsd=$('delete-selected-btn'); if(dsd) dsd.style.display='none'; $('select-all-btn').textContent='Select all'; renderCatalogue(); }
 function addBatchToList(){
   S.batchSelected.forEach(function(itemId){
     if(S.packList.find(function(p){return p.id===itemId;})) return;
     var item=S.catalogue.find(function(i){return i.id===itemId;});
-    if(item) S.packList.push(Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:1}));
+    if(item){
+      var qty=(S._pendingQty&&S._pendingQty[itemId])||1;
+      S.packList.push(Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:qty}));
+    }
   });
   clearBatch(); renderCatalogue(); renderList(); toast('Items added to list');
 }
@@ -867,6 +881,40 @@ async function quickDeleteItem(itemId){
   renderCatalogue(); renderList(); await saveBin();
 }
 
+function selectAllCatalogue(){
+  var visibleIds=[];
+  var search=($('search-input').value||'').toLowerCase();
+  var items=S.catalogue.slice();
+  if(S.locFilter!=='all') items=items.filter(function(i){return i.location===S.locFilter;});
+  if(S.catFilter!=='all') items=items.filter(function(i){return i.category===S.catFilter;});
+  if(search) items=items.filter(function(i){return i.name.toLowerCase().includes(search);});
+  items.forEach(function(i){visibleIds.push(i.id);});
+  var allSelected=visibleIds.every(function(id){return S.batchSelected.indexOf(id)>=0;});
+  if(allSelected){
+    S.batchSelected=S.batchSelected.filter(function(id){return visibleIds.indexOf(id)<0;});
+  } else {
+    visibleIds.forEach(function(id){if(S.batchSelected.indexOf(id)<0) S.batchSelected.push(id);});
+  }
+  var n=S.batchSelected.length;
+  $('batch-bar').style.display=n>0?'flex':'none';
+  $('batch-count').textContent=n+' selected';
+  $('delete-selected-btn').style.display=n>0&&S.mode==='admin'?'':'none';
+  $('select-all-btn').textContent=allSelected?'Select all':'Deselect all';
+  renderCatalogue();
+}
+async function deleteSelectedItems(){
+  if(!S.batchSelected.length) return;
+  if(!confirm('Delete '+S.batchSelected.length+' item'+(S.batchSelected.length!==1?'s':'')+' from the catalogue? This cannot be undone.')) return;
+  S.catalogue=S.catalogue.filter(function(i){return S.batchSelected.indexOf(i.id)<0;});
+  S.packList=S.packList.filter(function(i){return S.batchSelected.indexOf(i.id)<0;});
+  S.batchSelected=[];
+  $('batch-bar').style.display='none';
+  $('delete-selected-btn').style.display='none';
+  $('select-all-btn').textContent='Select all';
+  renderCatalogue(); renderList();
+  await saveBin();
+  toast('Items deleted from catalogue');
+}
 function renderSavedLists(){
   var scroll=$('lists-scroll');
   var search=($('lists-search').value||'').toLowerCase();
@@ -1282,7 +1330,7 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
         doc.setDrawColor(150,148,140); doc.setLineWidth(0.45);
         doc.rect(ML,y-4,4,4);
         var qtyNeeded=item.qtyNeeded||1;
-        var itemLabel=(qtyNeeded>1?qtyNeeded+'x  ':'')+item.name;
+        var itemLabel=qtyNeeded+'x  '+item.name;
         doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(26,25,23);
         doc.text(itemLabel,ML+6,y-0.5); y+=5;
         if(subCount>0){
@@ -1322,6 +1370,7 @@ loadLocal();
 if(S.binId&&S.binId!=='undefined'){
   if(S.mode==='admin'){
     $('admin-key').value=S.apiKey;
+    if($('bin-id-manual')) $('bin-id-manual').value=S.binId;
     $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
     setMode('admin');
   } else {
