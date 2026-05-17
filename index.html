@@ -250,7 +250,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
 <div id="app-screen">
   <div class="topbar">
-    <h1>NEN Gear List Generator</h1>
+    <h1>NEN Gear List Generator <span id="version-tag" style="font-weight:400;opacity:.5;font-size:10px;letter-spacing:.02em"></span></h1>
     <span class="badge" id="role-badge"></span>
     <span class="user-tag" id="user-tag"></span>
     <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Synced</span></div>
@@ -405,6 +405,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="field"><label>Location filter</label><div class="export-loc-btns" id="export-loc-btns"></div></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeModal('export-modal')">Cancel</button>
+      <button class="btn-secondary" onclick="runExportAll()" id="export-all-btn">Download all</button>
       <button class="btn-confirm" onclick="runExport()">Download PDF</button>
     </div>
   </div>
@@ -1239,6 +1240,9 @@ function openExportModal(){
     S.exportFilter=b.dataset.loc;
     $('export-loc-btns').querySelectorAll('[data-loc]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.loc===S.exportFilter);});
   };
+  // Show "Download all" only if there are multiple locations
+  var allBtn=$('export-all-btn');
+  if(allBtn) allBtn.style.display=locsInList.length>1?'':'none';
   openModal('export-modal');
   setTimeout(function(){$('ex-name').focus();},50);
 }
@@ -1251,6 +1255,29 @@ function pdfFilename(shootName,rawDate,locLabel){
   return datePart+'_'+namePart+locPart+'.pdf';
 }
 
+function runExportAll(){
+  var shootName=$('ex-name').value.trim()||'Shoot Pack List';
+  var rawDate=$('ex-date').value;
+  var shootDate=rawDate?new Date(rawDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  var locsInList=[];
+  S.packList.forEach(function(i){if(locsInList.indexOf(i.location)<0) locsInList.push(i.location);});
+  closeModal('export-modal');
+  // Download complete kit first, then each location with a small delay between
+  var downloads=[{filter:'all',label:'Complete kit',items:S.packList.slice()}];
+  locsInList.forEach(function(loc){
+    var items=S.packList.filter(function(i){return i.location===loc;});
+    if(items.length) downloads.push({filter:loc,label:loc,items:items});
+  });
+  var idx=0;
+  function next(){
+    if(idx>=downloads.length) return;
+    var d=downloads[idx++];
+    generatePDF(shootName,shootDate,rawDate,d.label,d.items,d.filter);
+    if(idx<downloads.length) setTimeout(next,800);
+  }
+  next();
+  toast('Downloading '+(downloads.length)+' PDFs...');
+}
 function runExport(){
   var shootName=$('ex-name').value.trim()||'Shoot Pack List';
   var rawDate=$('ex-date').value;
@@ -1280,7 +1307,8 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
 
   doc.setFillColor(26,25,23); doc.rect(0,0,PW,34,'F');
   doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
-  doc.text(shootName.toUpperCase(),ML,13);
+  var pdfTitle=filter==="all"?shootName.toUpperCase():(shootName+" ("+locLabel+")").toUpperCase();
+  doc.text(pdfTitle,ML,13);
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(165,163,155);
   var createdBy=S.userName&&S.userName!=='Admin'?S.userName:'';
   var metaParts=[shootDate,'Location: '+locLabel];
@@ -1309,12 +1337,10 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
 
   Object.keys(byLoc).forEach(function(loc){
     var catGroups=byLoc[loc];
-    if(filter==='all'){
-      checkPage(12);
-      doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,9,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(200,198,192);
-      doc.text(loc.toUpperCase(),ML+3,y); y+=11;
-    }
+    checkPage(12);
+    doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,9,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(200,198,192);
+    doc.text(loc.toUpperCase(),ML+3,y); y+=11;
     Object.keys(catGroups).forEach(function(cat){
       var catItems=catGroups[cat];
       checkPage(9);
