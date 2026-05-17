@@ -8,220 +8,227 @@
 :root{
   --bg:#f5f4f1;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9be;
   --text:#1a1917;--text2:#6b6860;--text3:#9e9b93;
-  --blue:#1a5fa8;--blue-bg:#e8f0fb;--green:#2a6b3a;--green-bg:#e6f2e9;
-  --red:#b03a2e;--red-bg:#fbeae8;--amber:#8a5700;--amber-bg:#fef3e2;
+  --blue:#1a5fa8;--blue-bg:#e8f0fb;
+  --green:#2a6b3a;--green-bg:#e6f2e9;
+  --red:#b03a2e;--red-bg:#fbeae8;
+  --amber:#8a5700;--amber-bg:#fef3e2;
   --radius:8px;--radius-lg:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
-
-/* ── Setup ── */
 #setup-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
 .setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;max-width:480px;width:100%}
 .setup-card h1{font-size:20px;font-weight:800;margin-bottom:2px;letter-spacing:-.03em;text-transform:uppercase}
-.setup-card .sub{color:var(--text2);font-size:13px;margin-bottom:28px;line-height:1.5}
+.setup-card .sub{color:var(--text2);font-size:13px;margin-bottom:24px;line-height:1.5}
 .mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px}
-.mode-btn{padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:all .15s;text-align:center;font-family:inherit}
-.mode-btn.active{background:var(--text);color:white;border-color:var(--text)}
-.field{margin-bottom:16px}
-.field label{display:block;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.mode-btn{padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);font-family:inherit;transition:all .15s}
+.mode-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
 .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);outline:none}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--text)}
 .field .hint{font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5}
 .field .hint a{color:var(--blue)}
-.btn-primary{width:100%;padding:10px;background:var(--text);color:white;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-primary{width:100%;padding:10px;background:var(--text);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px}
 .btn-primary:hover{opacity:.88}
-.setup-steps{background:var(--surface2);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.setup-steps{background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:18px}
 .setup-steps p{font-size:12px;color:var(--text2);line-height:1.8}
 .setup-steps strong{color:var(--text)}
-
-/* ── App shell ── */
-#app-screen{display:none;height:100vh;flex-direction:column}
-.topbar{background:var(--text);color:white;padding:0 20px;height:48px;display:flex;align-items:center;gap:12px;flex-shrink:0}
-.topbar h1{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;flex:1}
-.badge{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600;white-space:nowrap}
+#app-screen{display:none;height:100vh;flex-direction:column;overflow:hidden}
+.topbar{background:var(--text);color:#fff;padding:0 16px;height:48px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.topbar h1{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;flex:1}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap}
 .badge-admin{background:#f5c518;color:#1a1917}
-.badge-viewer{background:#555;color:#ddd}
-.sync-status{font-size:11px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.badge-viewer{background:#444;color:#ccc}
+.user-tag{font-size:11px;color:rgba(255,255,255,.6);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.sync-status{font-size:11px;color:rgba(255,255,255,.45);display:flex;align-items:center;gap:4px;white-space:nowrap}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#4caf50;flex-shrink:0}
 .sync-dot.error{background:#f44336}
 .sync-dot.loading{background:#ff9800;animation:pulse 1s infinite}
 .sync-dot.offline{background:#888}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.topbar-btn{background:rgba(255,255,255,.12);border:none;color:white;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
-.topbar-btn:hover{background:rgba(255,255,255,.2)}
-.offline-banner{background:var(--amber-bg);border-bottom:1px solid #e8c87a;color:var(--amber);font-size:12px;font-weight:500;padding:6px 20px;display:none;align-items:center;gap:8px;flex-shrink:0}
-.conflict-banner{background:var(--red-bg);border-bottom:1px solid #f5b8b4;color:var(--red);font-size:12px;font-weight:500;padding:6px 20px;display:none;align-items:center;gap:8px;flex-shrink:0}
-.conflict-banner button{margin-left:auto;padding:3px 10px;border:1px solid var(--red);border-radius:6px;background:none;color:var(--red);font-size:11px;cursor:pointer;font-family:inherit}
-.workspace{display:grid;grid-template-columns:290px 1fr 270px;flex:1;overflow:hidden}
-
-/* ── Sidebar: catalogue ── */
+.topbar-btn{background:rgba(255,255,255,.12);border:none;color:#fff;padding:4px 9px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.topbar-btn:hover{background:rgba(255,255,255,.22)}
+.banner{font-size:12px;font-weight:500;padding:5px 16px;display:none;align-items:center;gap:8px;flex-shrink:0}
+.banner-offline{background:var(--amber-bg);border-bottom:1px solid #e8c87a;color:var(--amber)}
+.banner-conflict{background:var(--red-bg);border-bottom:1px solid #f5b8b4;color:var(--red)}
+.banner button{margin-left:auto;padding:2px 10px;border:1px solid currentColor;border-radius:6px;background:none;color:inherit;font-size:11px;cursor:pointer;font-family:inherit}
+.workspace{display:grid;grid-template-columns:290px 1fr 260px;flex:1;overflow:hidden}
 .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.sidebar-header{padding:12px 14px 0}
-.sidebar-header h2{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.filter-row{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
-.filter-chip{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text3);font-family:inherit;transition:all .12s;white-space:nowrap}
-.filter-chip.active{background:var(--text);color:white;border-color:var(--text)}
-.search-box{position:relative;padding:0 14px 8px}
-.search-box input{width:100%;padding:6px 10px 6px 28px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
+.panel-header{padding:10px 14px 0;flex-shrink:0}
+.panel-header h2{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.filter-row{display:flex;gap:3px;margin-bottom:4px;flex-wrap:wrap;padding:0 14px}
+.filter-chip{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text3);font-family:inherit;white-space:nowrap;transition:all .12s}
+.filter-chip.active{background:var(--text);color:#fff;border-color:var(--text)}
+.search-box{position:relative;padding:4px 14px 6px}
+.search-box input{width:100%;padding:6px 10px 6px 26px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
 .search-box input:focus{border-color:var(--border2);background:var(--surface)}
 .search-icon{position:absolute;left:23px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;pointer-events:none}
+.batch-bar{padding:5px 14px;background:var(--blue-bg);border-bottom:1px solid #c5d9f5;display:none;align-items:center;gap:8px;flex-shrink:0}
+.batch-bar span{font-size:12px;color:var(--blue);font-weight:500;flex:1}
+.batch-btn{padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:none}
+.batch-add{background:var(--blue);color:#fff}
+.batch-clear{background:none;border:1px solid var(--blue);color:var(--blue)}
 .cat-list{flex:1;overflow-y:auto}
 .cat-item{padding:8px 14px;border-bottom:1px solid var(--border);transition:background .1s}
 .cat-item:hover{background:var(--surface2)}
 .cat-item.in-list{background:var(--green-bg)}
-.cat-item.in-list:hover{background:#d8eedd}
-.cat-item-top{display:flex;align-items:center;gap:6px}
-.cat-name{font-size:12px;font-weight:600;flex:1;color:var(--text);line-height:1.3}
-.cat-name.clickable{cursor:pointer}
-.cat-name.clickable:hover{color:var(--blue)}
-.loc-pill{font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;white-space:nowrap}
-.cat-chip{font-size:9px;font-weight:600;padding:2px 6px;border-radius:20px;background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
-.cat-subs{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.6;padding-left:2px}
-.cat-qty{font-size:10px;color:var(--text3);margin-top:1px}
-.add-item-btn{font-size:11px;font-weight:600;padding:2px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);cursor:pointer;color:var(--text2);white-space:nowrap;font-family:inherit}
-.cat-item-unavail{opacity:.55}
-.add-item-btn:hover{background:var(--surface2)}
-.add-item-btn.added{background:var(--green-bg);border-color:#8dc89a;color:var(--green)}
-.item-actions{display:flex;gap:4px;align-items:center}
-.icon-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px 4px;border-radius:4px;font-family:inherit;line-height:1}
-.icon-btn:hover{background:var(--surface2);color:var(--text2)}
-.sidebar-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:5px}
-.add-gear-btn{width:100%;padding:7px;border:1.5px dashed var(--border2);border-radius:var(--radius);background:none;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit}
-.add-gear-btn:hover{background:var(--surface2)}
-.admin-tools-row{display:flex;gap:5px}
-.small-btn{flex:1;padding:5px;border:none;border-radius:var(--radius);background:none;font-size:11px;color:var(--text3);cursor:pointer;font-family:inherit;text-align:center}
-.small-btn:hover{background:var(--surface2);color:var(--text2)}
-
-/* ── Main panel ── */
+.cat-item.in-list:hover{background:#d5ecd9}
+.cat-item.unavail{opacity:.5}
+.cat-item-top{display:flex;align-items:center;gap:5px}
+.cat-check{width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--blue)}
+.cat-name{font-size:12px;font-weight:600;flex:1;color:var(--text);line-height:1.3;cursor:pointer}
+.cat-name:hover{color:var(--blue)}
+.loc-pill{font-size:9px;font-weight:700;padding:2px 5px;border-radius:20px;white-space:nowrap}
+.cat-chip{font-size:9px;font-weight:600;padding:1px 5px;border-radius:20px;background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+.cat-subs{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.5;padding-left:2px}
+.cat-avail{font-size:10px;margin-top:1px}
+.cat-qty-row{display:flex;align-items:center;gap:6px;margin-top:5px}
+.cat-qty-row label{font-size:10px;color:var(--text3)}
+.qty-select{padding:2px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:inherit;background:var(--surface);color:var(--text);cursor:pointer}
+.add-btn{font-size:11px;font-weight:600;padding:2px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);cursor:pointer;color:var(--text2);white-space:nowrap;font-family:inherit}
+.add-btn:hover{background:var(--surface2)}
+.add-btn.added{background:var(--green-bg);border-color:#8dc89a;color:var(--green)}
+.add-btn:disabled{opacity:.4;cursor:not-allowed}
+.admin-icon-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:1px 3px;border-radius:4px;line-height:1}
+.admin-icon-btn:hover{background:var(--surface2);color:var(--red)}
+.sidebar-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.dashed-btn{width:100%;padding:7px;border:1.5px dashed var(--border2);border-radius:var(--radius);background:none;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit}
+.dashed-btn:hover{background:var(--surface2)}
+.tools-row{display:flex;gap:4px}
+.tool-btn{flex:1;padding:5px;border:none;border-radius:var(--radius);background:none;font-size:11px;color:var(--text3);cursor:pointer;font-family:inherit;text-align:center}
+.tool-btn:hover{background:var(--surface2);color:var(--text2)}
+.req-row{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid var(--border)}
+.req-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;background:var(--amber-bg);color:var(--amber);white-space:nowrap;flex-shrink:0;margin-top:2px}
 .main-panel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);border-right:1px solid var(--border)}
-.main-header{padding:12px 16px 10px;background:var(--surface);border-bottom:1px solid var(--border)}
-.main-header-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.main-header{padding:10px 16px 8px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.main-header-top{display:flex;align-items:center;gap:8px;margin-bottom:7px}
 .main-header-top h2{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;flex:1}
-.current-list-tag{font-size:11px;color:var(--blue);font-weight:500;background:var(--blue-bg);padding:2px 8px;border-radius:20px}
+.list-tag{font-size:11px;color:var(--blue);font-weight:500;background:var(--blue-bg);padding:2px 8px;border-radius:20px;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis}
 .header-fields{display:grid;grid-template-columns:1fr 150px;gap:8px}
 .header-input{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none;width:100%}
 .header-input:focus{border-color:var(--border2);background:var(--surface)}
 .list-scroll{flex:1;overflow-y:auto;padding:0 16px 16px}
 .loc-section{margin-bottom:8px}
-.loc-header{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 0 3px;border-bottom:1px solid var(--border);margin-bottom:3px;display:flex;align-items:center;gap:6px}
-.list-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;cursor:grab;user-select:none;border-radius:6px;transition:background .1s}
+.loc-header-row{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 0 3px;border-bottom:1px solid var(--border);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.list-row{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-radius:6px;cursor:grab;user-select:none}
 .list-row:active{cursor:grabbing}
-.list-row.drag-over{background:var(--blue-bg);outline:2px dashed var(--blue)}
-.list-row.dragging{opacity:.4}
-.drag-handle{color:var(--text3);font-size:14px;padding:2px 0;flex-shrink:0;margin-top:2px;cursor:grab}
+.list-row.drag-over{background:var(--blue-bg);outline:2px dashed var(--blue);border-radius:6px}
+.list-row.dragging{opacity:.35}
+.drag-handle{color:var(--text3);font-size:13px;padding:2px 0;flex-shrink:0;margin-top:2px}
 .list-row-info{flex:1;min-width:0}
-.list-row-name{font-size:13px;font-weight:600}
-.list-row-subs{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.7}
-.note-field{margin-top:4px}
-.note-input{width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--surface2);color:var(--text2);outline:none;resize:none}
-.note-input:focus{border-color:var(--border2);background:var(--surface)}
-.note-toggle{background:none;border:none;font-size:10px;color:var(--text3);cursor:pointer;padding:2px 0;font-family:inherit}
+.list-row-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.list-qty-select{padding:1px 5px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:inherit;background:var(--surface);color:var(--text);cursor:pointer}
+.list-row-subs{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.5}
+.note-toggle{background:none;border:none;font-size:10px;color:var(--text3);cursor:pointer;padding:2px 0;font-family:inherit;display:block;margin-top:2px}
 .note-toggle:hover{color:var(--text2)}
-.list-row-actions{display:flex;gap:2px;align-items:flex-start;flex-shrink:0;margin-top:1px}
-.remove-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px;line-height:1}
+.note-input{width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--surface2);color:var(--text2);outline:none;resize:none;margin-top:3px}
+.note-input:focus{border-color:var(--border2)}
+.list-row-actions{display:flex;gap:2px;align-items:flex-start;flex-shrink:0;margin-top:2px}
+.remove-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px;line-height:1}
 .remove-btn:hover{color:var(--red)}
-.empty{display:flex;align-items:center;justify-content:center;height:160px;color:var(--text3);font-size:13px}
-.main-footer{padding:10px 16px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.empty-list{display:flex;align-items:center;justify-content:center;height:140px;color:var(--text3);font-size:13px}
+.main-footer{padding:9px 16px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:7px;align-items:center;flex-wrap:wrap;flex-shrink:0}
 .count-label{font-size:12px;color:var(--text3);flex:1}
 .footer-btn{padding:6px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:none;color:var(--text2)}
 .footer-btn:hover{background:var(--surface2)}
-.footer-btn.primary{background:var(--text);color:white;border-color:var(--text);font-weight:600}
+.footer-btn.primary{background:var(--text);color:#fff;border-color:var(--text);font-weight:600}
 .footer-btn.primary:hover{opacity:.85}
 .footer-btn.danger:hover{color:var(--red);border-color:var(--red)}
-
-/* ── Right panel: saved lists ── */
 .lists-panel{background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
 .lists-panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
 .lists-panel-header h2{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;flex:1}
-.lists-search{padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.lists-search{padding:6px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
 .lists-search input{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
-.lists-search input:focus{border-color:var(--border2)}
 .lists-scroll{flex:1;overflow-y:auto}
-.saved-list-item{padding:10px 14px;border-bottom:1px solid var(--border);transition:background .1s;position:relative}
-.saved-list-item:hover{background:var(--surface2)}
-.saved-list-item.active{background:var(--blue-bg)}
+.sli{padding:9px 14px;border-bottom:1px solid var(--border);transition:background .1s;position:relative}
+.sli:hover{background:var(--surface2)}
+.sli.active{background:var(--blue-bg)}
 .sli-top{display:flex;align-items:flex-start;gap:6px}
 .sli-name{font-size:12px;font-weight:600;flex:1;color:var(--text);line-height:1.3;cursor:pointer}
 .sli-meta{font-size:10px;color:var(--text3);margin-top:2px}
 .sli-shoot{font-size:10px;color:var(--text2);margin-top:1px;font-style:italic}
-.approved-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--green-bg);color:var(--green);border:1px solid #8dc89a;margin-top:3px}
-.approve-btn{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid var(--green);color:var(--green);background:none;white-space:nowrap;margin-top:4px}
-.approve-btn:hover{background:var(--green-bg)}
-.approve-btn.approved{background:var(--green-bg);border-color:#8dc89a}
-.unapprove-btn{font-size:11px;padding:3px 9px;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid var(--border2);color:var(--text3);background:none;white-space:nowrap;margin-top:4px}
-.unapprove-btn:hover{color:var(--red);border-color:var(--red)}
+.sli-approved{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;background:var(--green-bg);color:var(--green);border:1px solid #8dc89a;margin-top:3px}
 .sli-menu-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 2px;line-height:1;flex-shrink:0}
 .sli-menu-btn:hover{color:var(--text)}
 .sli-dropdown{position:absolute;right:14px;top:28px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;min-width:140px;overflow:hidden}
 .sli-dropdown button{display:block;width:100%;padding:8px 14px;border:none;background:none;font-size:12px;font-family:inherit;color:var(--text);text-align:left;cursor:pointer}
 .sli-dropdown button:hover{background:var(--surface2)}
-.sli-dropdown button.danger{color:var(--red)}
-.admin-group-header{padding:5px 14px 3px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;background:var(--surface2);border-bottom:1px solid var(--border)}
+.sli-dropdown button.red{color:var(--red)}
+.approve-btn{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid var(--green);color:var(--green);background:none;margin-top:5px;display:block}
+.approve-btn:hover{background:var(--green-bg)}
+.unapprove-btn{font-size:11px;padding:3px 9px;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid var(--border2);color:var(--text3);background:none;margin-top:5px;display:block}
+.unapprove-btn:hover{color:var(--red);border-color:var(--red)}
+.group-header{padding:5px 14px 3px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;background:var(--surface2);border-bottom:1px solid var(--border)}
 .lists-empty{padding:20px 14px;text-align:center;color:var(--text3);font-size:12px;line-height:1.7}
-
-/* ── Modals ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:22px;width:100%;max-width:430px;max-height:90vh;overflow-y:auto}
 .modal h3{font-size:16px;font-weight:700;margin-bottom:4px}
-.modal .modal-sub{font-size:12px;color:var(--text3);margin-bottom:18px;line-height:1.5}
+.modal-sub{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.5}
 .modal .field input,.modal .field select,.modal .field textarea{background:var(--surface2)}
 .modal .field textarea{resize:vertical;min-height:70px}
-.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
-.btn-secondary{padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius);background:none;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);font-family:inherit}
-.btn-danger{padding:8px 16px;border:1px solid var(--red);border-radius:var(--radius);background:none;font-size:13px;font-weight:500;cursor:pointer;color:var(--red);font-family:inherit}
-.btn-confirm{padding:8px 16px;border:none;border-radius:var(--radius);background:var(--text);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
-.loc-edit-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.btn-secondary{padding:7px 14px;border:1px solid var(--border);border-radius:var(--radius);background:none;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);font-family:inherit}
+.btn-danger{padding:7px 14px;border:1px solid var(--red);border-radius:var(--radius);background:none;font-size:13px;font-weight:500;cursor:pointer;color:var(--red);font-family:inherit}
+.btn-confirm{padding:7px 14px;border:none;border-radius:var(--radius);background:var(--text);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.loc-edit-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
 .loc-edit-row:last-child{border-bottom:none}
 .loc-edit-row input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;color:var(--text);background:var(--surface2);outline:none}
-.loc-del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0 2px;flex-shrink:0}
+.loc-del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:0 2px;flex-shrink:0}
 .loc-del-btn:hover{color:var(--red)}
-.loc-add-row{display:flex;gap:8px;margin-top:10px}
-.loc-add-input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
-.loc-add-btn{padding:7px 14px;border:none;border-radius:var(--radius);background:var(--text);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.add-row{display:flex;gap:8px;margin-top:10px}
+.add-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
+.add-row button{padding:7px 14px;border:none;border-radius:var(--radius);background:var(--text);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.cat-tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.cat-tag{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:12px;color:var(--text2)}
+.cat-tag button{background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;line-height:1;padding:0}
+.cat-tag button:hover{color:var(--red)}
 .export-loc-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .export-loc-opt{padding:6px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:inherit;transition:all .12s}
 .export-loc-opt:hover{border-color:var(--text);color:var(--text)}
-.export-loc-opt.active{background:var(--text);color:white;border-color:var(--text)}
-.cat-tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.cat-tag{display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:12px;color:var(--text2)}
-.cat-tag button{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;line-height:1;padding:0}
-.cat-tag button:hover{color:var(--red)}
-.request-item-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
-.request-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--amber-bg);color:var(--amber);white-space:nowrap;flex-shrink:0;margin-top:2px}
-
-/* Toast */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:white;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
+.export-loc-opt.active{background:var(--text);color:#fff;border-color:var(--text)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:700px){
+  #app-screen{height:auto;min-height:100vh;overflow-y:auto}
+  .workspace{display:flex;flex-direction:column;overflow:visible}
+  .sidebar,.main-panel,.lists-panel{height:auto;overflow:visible;border-right:none;border-bottom:1px solid var(--border)}
+  .cat-list{max-height:340px;overflow-y:auto}
+  .list-scroll{max-height:380px;overflow-y:auto;padding:0 12px 12px}
+  .lists-scroll{max-height:280px;overflow-y:auto}
+  .header-fields{grid-template-columns:1fr}
+  .topbar h1{font-size:10px}
+  .user-tag{display:none}
+}
 </style>
 </head>
 <body>
 
-<!-- ══ Setup ══ -->
 <div id="setup-screen">
   <div class="setup-card">
     <h1>NEN Gear List Generator</h1>
     <p class="sub">Shared gear catalogue and shoot pack list tool for the NEN team.</p>
     <div class="mode-toggle">
-      <button class="mode-btn active" onclick="setMode('admin')" id="mode-admin-btn">🔑 Admin</button>
-      <button class="mode-btn" onclick="setMode('viewer')" id="mode-viewer-btn">👁 Team member</button>
+      <button class="mode-btn active" id="mode-admin-btn" onclick="setMode('admin')">&#128273; Admin</button>
+      <button class="mode-btn" id="mode-viewer-btn" onclick="setMode('viewer')">&#128065; Team member</button>
     </div>
     <div id="admin-setup">
       <div class="setup-steps"><p>
         <strong>First time? 2-minute setup:</strong><br>
-        1. Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> → sign up free<br>
-        2. Click <strong>API Keys</strong> in the sidebar → copy your Master Key<br>
+        1. Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and sign up free<br>
+        2. Click <strong>API Keys</strong> in the sidebar and copy your Master Key<br>
         3. Paste it below and click Connect
       </p></div>
       <div class="field"><label>JSONBin Master Key</label>
-        <input type="password" id="admin-key" placeholder="$2a$10$…" />
+        <input type="password" id="admin-key" placeholder="$2a$10$..." />
         <p class="hint">Stored only in this browser. Never shared.</p>
       </div>
       <div class="field" id="bin-id-field" style="display:none"><label>Bin ID</label>
         <input type="text" id="bin-id-input" readonly onclick="this.select()" />
-        <p class="hint">Share this with team members.</p>
+        <p class="hint">Share this ID with team members.</p>
       </div>
-      <button class="btn-primary" onclick="adminConnect()">Connect & open →</button>
+      <button class="btn-primary" id="connect-btn" onclick="adminConnect()">Connect &amp; open</button>
     </div>
     <div id="viewer-setup" style="display:none">
       <div class="setup-steps"><p><strong>Your admin will give you a Bin ID.</strong><br>Enter your name and the Bin ID to get started.</p></div>
@@ -232,66 +239,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       <div class="field"><label>Bin ID</label>
         <input type="text" id="viewer-bin-id" placeholder="e.g. 6849f3a2e41b4d3e2f8a1c90" />
       </div>
-      <button class="btn-primary" onclick="viewerConnect()">Open →</button>
+      <button class="btn-primary" onclick="viewerConnect()">Open</button>
     </div>
   </div>
 </div>
 
-<!-- ══ App ══ -->
 <div id="app-screen">
   <div class="topbar">
     <h1>NEN Gear List Generator</h1>
     <span class="badge" id="role-badge"></span>
+    <span class="user-tag" id="user-tag"></span>
     <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Synced</span></div>
-    <button class="topbar-btn" onclick="manualSync()">↻ Sync</button>
-    <button class="topbar-btn" id="share-btn" onclick="showShareModal()" style="display:none">Share</button>
-    <button class="topbar-btn" onclick="logout()">← Switch</button>
+    <button class="topbar-btn" onclick="manualSync()">Sync</button>
+    <button class="topbar-btn" id="share-btn" onclick="openModal('share-modal')" style="display:none">Share</button>
+    <button class="topbar-btn" onclick="logout()">Log out</button>
   </div>
-  <div class="offline-banner" id="offline-banner">⚡ Offline — working from cache. Changes will sync when reconnected.</div>
-  <div class="conflict-banner" id="conflict-banner">
-    ⚠ The catalogue was updated by someone else since you last synced.
-    <button onclick="resolveConflict()">Reload latest</button>
-  </div>
+  <div class="banner banner-offline" id="offline-banner">Offline - working from cache. Will sync when reconnected.</div>
+  <div class="banner banner-conflict" id="conflict-banner">Catalogue updated elsewhere since your last sync. <button onclick="resolveConflict()">Reload</button></div>
 
   <div class="workspace">
-    <!-- Left: catalogue -->
     <div class="sidebar">
-      <div class="sidebar-header">
-        <h2>Gear Catalogue</h2>
-        <div class="filter-row" id="loc-filter-row"></div>
-        <div class="filter-row" id="cat-filter-row"></div>
-      </div>
+      <div class="panel-header"><h2>Gear Catalogue</h2></div>
+      <div class="filter-row" id="loc-filter-row"></div>
+      <div class="filter-row" id="cat-filter-row"></div>
       <div class="search-box">
-        <span class="search-icon">⌕</span>
-        <input type="text" id="search-input" placeholder="Search gear…" oninput="renderCatalogue()" />
+        <span class="search-icon">&#9906;</span>
+        <input type="text" id="search-input" placeholder="Search gear..." oninput="renderCatalogue()" />
+      </div>
+      <div class="batch-bar" id="batch-bar">
+        <span id="batch-count">0 selected</span>
+        <button class="batch-btn batch-clear" onclick="clearBatch()">Clear</button>
+        <button class="batch-btn batch-add" onclick="addBatchToList()">Add all to list</button>
       </div>
       <div class="cat-list" id="cat-list"></div>
       <div class="sidebar-footer">
-        <div id="admin-tools">
-          <button class="add-gear-btn" onclick="openItemModal(null)">+ Add gear item</button>
-          <div class="admin-tools-row">
-            <button class="small-btn" onclick="openLocModal()">⚙ Locations</button>
-            <button class="small-btn" onclick="openCatModal()">⚙ Categories</button>
-            <button class="small-btn" onclick="exportCSV()">↓ CSV</button>
-            <button class="small-btn" onclick="openCSVImport()">↑ CSV</button>
+        <div id="admin-tools" style="display:none">
+          <button class="dashed-btn" onclick="openItemModal(null)">+ Add gear item</button>
+          <div class="tools-row">
+            <button class="tool-btn" onclick="openModal('loc-modal')">Locations</button>
+            <button class="tool-btn" onclick="openModal('cat-modal')">Categories</button>
+            <button class="tool-btn" onclick="exportCSV()">CSV export</button>
+            <button class="tool-btn" onclick="openModal('csv-modal')">CSV import</button>
           </div>
-          <div id="request-items-admin-wrap"></div>
+          <div id="req-admin-wrap"></div>
         </div>
         <div id="viewer-tools" style="display:none">
-          <button class="add-gear-btn" onclick="openRequestModal()">+ Request missing item</button>
+          <button class="dashed-btn" onclick="openModal('request-modal')">+ Request missing item</button>
         </div>
       </div>
     </div>
 
-    <!-- Centre: active list -->
     <div class="main-panel">
       <div class="main-header">
         <div class="main-header-top">
           <h2>Current List</h2>
-          <span class="current-list-tag" id="current-list-tag" style="display:none"></span>
+          <span class="list-tag" id="list-tag" style="display:none"></span>
         </div>
         <div class="header-fields">
-          <input class="header-input" id="shoot-name" placeholder="Shoot name…" />
+          <input class="header-input" id="shoot-name" placeholder="Client / Project..." />
           <input class="header-input" type="date" id="shoot-date" oninput="renderCatalogue()" />
         </div>
       </div>
@@ -300,148 +305,135 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
         <span class="count-label" id="count-label">0 items</span>
         <button class="footer-btn danger" onclick="clearList()">Clear</button>
         <button class="footer-btn" onclick="saveCurrentList()">Save</button>
-        <button class="footer-btn primary" onclick="openExportModal()">↓ PDF</button>
+        <button class="footer-btn primary" onclick="openExportModal()">Download PDF</button>
       </div>
     </div>
 
-    <!-- Right: saved lists -->
     <div class="lists-panel">
       <div class="lists-panel-header">
         <h2 id="lists-panel-title">My saved lists</h2>
-        <button class="topbar-btn" style="background:var(--surface2);color:var(--text2);font-size:11px" onclick="confirmNewList()">+ New</button>
+        <button class="topbar-btn" style="background:var(--surface2);color:var(--text2)" onclick="clearList()">+ New</button>
       </div>
-      <div class="lists-search"><input type="text" id="lists-search" placeholder="Search lists…" oninput="renderSavedLists()" /></div>
+      <div class="lists-search"><input type="text" id="lists-search" placeholder="Search lists..." oninput="renderSavedLists()" /></div>
       <div class="lists-scroll" id="lists-scroll"></div>
     </div>
   </div>
 </div>
 
-<!-- ══ Gear Item Modal ══ -->
 <div class="modal-overlay" id="item-modal" style="display:none" onclick="if(event.target===this)closeItemModal()">
   <div class="modal">
     <h3 id="item-modal-title">Add gear item</h3>
-    <p class="modal-sub" id="item-modal-sub">Click item names in the catalogue to edit them.</p>
     <div class="field"><label>Item name</label><input type="text" id="m-name" placeholder="e.g. Canon R5 body" /></div>
     <div class="field"><label>Location</label><select id="m-loc"></select></div>
     <div class="field"><label>Category</label><select id="m-cat"></select></div>
-    <div class="field"><label>Quantity available</label><input type="number" id="m-qty" min="1" value="1" /></div>
-    <div class="field"><label>Sub-items (one per line)</label><textarea id="m-subs" placeholder="Battery x2&#10;Charger&#10;Body cap&#10;Strap"></textarea></div>
+    <div class="field"><label>Total quantity available</label><input type="number" id="m-qty" min="1" value="1" /></div>
+    <div class="field"><label>Sub-items (one per line)</label><textarea id="m-subs" placeholder="Battery x2&#10;Charger&#10;Body cap"></textarea></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeItemModal()">Cancel</button>
-      <button class="btn-secondary" id="item-dupe-btn" onclick="dupeCurrentItem()" style="display:none">Duplicate</button>
-      <button class="btn-danger" id="item-delete-btn" onclick="deleteCurrentItem()" style="display:none">Delete</button>
+      <button class="btn-secondary" id="item-dupe-btn" onclick="dupeItem()" style="display:none">Duplicate</button>
+      <button class="btn-danger" id="item-del-btn" onclick="deleteItem()" style="display:none">Delete</button>
       <button class="btn-confirm" onclick="saveItem()">Save</button>
     </div>
   </div>
 </div>
 
-<!-- ══ Location Manager Modal ══ -->
-<div class="modal-overlay" id="loc-modal" style="display:none" onclick="if(event.target===this)closeLocModal()">
+<div class="modal-overlay" id="loc-modal" style="display:none" onclick="if(event.target===this)closeModal('loc-modal')">
   <div class="modal">
     <h3>Manage locations</h3>
     <p class="modal-sub">Rename or delete. Gear in deleted locations moves to the first remaining one.</p>
     <div id="loc-edit-list"></div>
-    <div class="loc-add-row">
-      <input class="loc-add-input" type="text" id="new-loc-input" placeholder="New location name…" onkeydown="if(event.key==='Enter')addLocation()" />
-      <button class="loc-add-btn" onclick="addLocation()">Add</button>
+    <div class="add-row">
+      <input type="text" id="new-loc-input" placeholder="New location name..." onkeydown="if(event.key==='Enter')addLocation()" />
+      <button onclick="addLocation()">Add</button>
     </div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeLocModal()">Cancel</button>
-      <button class="btn-confirm" onclick="saveLocations()">Save</button>
+      <button class="btn-secondary" onclick="closeModal('loc-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="saveLocations()">Save locations</button>
     </div>
   </div>
 </div>
 
-<!-- ══ Category Manager Modal ══ -->
-<div class="modal-overlay" id="cat-modal" style="display:none" onclick="if(event.target===this)closeCatModal()">
+<div class="modal-overlay" id="cat-modal" style="display:none" onclick="if(event.target===this)closeModal('cat-modal')">
   <div class="modal">
     <h3>Manage categories</h3>
-    <p class="modal-sub">Add or remove categories. Removing a category unassigns it from gear items.</p>
+    <p class="modal-sub">Add or remove categories.</p>
     <div class="cat-tag-list" id="cat-tag-list"></div>
-    <div class="loc-add-row">
-      <input class="loc-add-input" type="text" id="new-cat-input" placeholder="New category name…" onkeydown="if(event.key==='Enter')addCategory()" />
-      <button class="loc-add-btn" onclick="addCategory()">Add</button>
+    <div class="add-row">
+      <input type="text" id="new-cat-input" placeholder="New category..." onkeydown="if(event.key==='Enter')addCategory()" />
+      <button onclick="addCategory()">Add</button>
     </div>
-    <div class="modal-btns">
-      <button class="btn-confirm" onclick="closeCatModal()">Done</button>
-    </div>
+    <div class="modal-btns"><button class="btn-confirm" onclick="closeModal('cat-modal')">Done</button></div>
   </div>
 </div>
 
-<!-- ══ Save List Modal ══ -->
-<div class="modal-overlay" id="save-modal" style="display:none" onclick="if(event.target===this)closeSaveModal()">
+<div class="modal-overlay" id="save-modal" style="display:none" onclick="if(event.target===this)closeModal('save-modal')">
   <div class="modal">
     <h3 id="save-modal-title">Save list</h3>
-    <div class="field"><label>List name</label><input type="text" id="save-list-name" placeholder="e.g. Adidas Campaign — Loc A" /></div>
+    <div class="field"><label>List name</label><input type="text" id="save-list-name" placeholder="e.g. Nike Campaign - Loc A" /></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn-secondary" onclick="closeModal('save-modal')">Cancel</button>
       <button class="btn-confirm" onclick="confirmSaveList()">Save</button>
     </div>
   </div>
 </div>
 
-<!-- ══ Rename List Modal ══ -->
-<div class="modal-overlay" id="rename-modal" style="display:none" onclick="if(event.target===this)closeRenameModal()">
+<div class="modal-overlay" id="rename-modal" style="display:none" onclick="if(event.target===this)closeModal('rename-modal')">
   <div class="modal">
     <h3>Rename list</h3>
-    <div class="field"><label>New name</label><input type="text" id="rename-input" placeholder="List name…" /></div>
+    <div class="field"><label>New name</label><input type="text" id="rename-input" placeholder="List name..." /></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeRenameModal()">Cancel</button>
+      <button class="btn-secondary" onclick="closeModal('rename-modal')">Cancel</button>
       <button class="btn-confirm" onclick="confirmRename()">Rename</button>
     </div>
   </div>
 </div>
 
-<!-- ══ Export Modal ══ -->
-<div class="modal-overlay" id="export-modal" style="display:none" onclick="if(event.target===this)closeExportModal()">
+<div class="modal-overlay" id="export-modal" style="display:none" onclick="if(event.target===this)closeModal('export-modal')">
   <div class="modal">
     <h3>Download PDF</h3>
-    <p class="modal-sub">Confirm details — they'll appear in the PDF header.</p>
-    <div class="field"><label>Shoot name</label><input type="text" id="ex-name" /></div>
+    <p class="modal-sub">Confirm details - they appear in the PDF header.</p>
+    <div class="field"><label>Client / Project</label><input type="text" id="ex-name" /></div>
     <div class="field"><label>Shoot date</label><input type="date" id="ex-date" /></div>
     <div class="field"><label>Location filter</label><div class="export-loc-btns" id="export-loc-btns"></div></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeExportModal()">Cancel</button>
-      <button class="btn-confirm" onclick="runExport()">↓ Download PDF</button>
+      <button class="btn-secondary" onclick="closeModal('export-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="runExport()">Download PDF</button>
     </div>
   </div>
 </div>
 
-<!-- ══ Share Modal ══ -->
-<div class="modal-overlay" id="share-modal" style="display:none" onclick="if(event.target===this)closeShareModal()">
+<div class="modal-overlay" id="share-modal" style="display:none" onclick="if(event.target===this)closeModal('share-modal')">
   <div class="modal">
     <h3>Share with team</h3>
-    <p class="modal-sub">Give team members the Bin ID. They choose "Team member" on the login screen and paste it in.</p>
+    <p class="modal-sub">Give team members this Bin ID. They choose Team member and paste it in.</p>
     <div class="field"><label>Bin ID</label><input type="text" id="share-bin-id" readonly onclick="this.select()" style="font-family:monospace;font-size:13px" /></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeShareModal()">Close</button>
+      <button class="btn-secondary" onclick="closeModal('share-modal')">Close</button>
       <button class="btn-confirm" onclick="copyBinId()">Copy ID</button>
     </div>
   </div>
 </div>
 
-<!-- ══ Request Item Modal ══ -->
-<div class="modal-overlay" id="request-modal" style="display:none" onclick="if(event.target===this)closeRequestModal()">
+<div class="modal-overlay" id="request-modal" style="display:none" onclick="if(event.target===this)closeModal('request-modal')">
   <div class="modal">
     <h3>Request a missing item</h3>
-    <p class="modal-sub">Tell the admin what gear you need added to the catalogue.</p>
+    <p class="modal-sub">Tell the admin what gear to add to the catalogue.</p>
     <div class="field"><label>Item name</label><input type="text" id="req-name" placeholder="e.g. DJI Ronin 4D" /></div>
-    <div class="field"><label>Notes (optional)</label><textarea id="req-notes" placeholder="Any details about the item…" style="min-height:60px"></textarea></div>
+    <div class="field"><label>Notes (optional)</label><textarea id="req-notes" style="min-height:56px" placeholder="Any details..."></textarea></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeRequestModal()">Cancel</button>
+      <button class="btn-secondary" onclick="closeModal('request-modal')">Cancel</button>
       <button class="btn-confirm" onclick="submitRequest()">Send request</button>
     </div>
   </div>
 </div>
 
-<!-- ══ CSV Import Modal ══ -->
-<div class="modal-overlay" id="csv-modal" style="display:none" onclick="if(event.target===this)closeCSVImport()">
+<div class="modal-overlay" id="csv-modal" style="display:none" onclick="if(event.target===this)closeModal('csv-modal')">
   <div class="modal">
     <h3>Import CSV</h3>
-    <p class="modal-sub">Paste CSV data below. Expected columns: <code>name, location, category, qty, subitems</code><br>Subitems separated by semicolons. First row is header (skipped).</p>
-    <div class="field"><textarea id="csv-input" style="min-height:120px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea></div>
+    <p class="modal-sub">Columns: name, location, category, qty, subitems. Subitems separated by semicolons. First row is header (skipped). Duplicate names are skipped.</p>
+    <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeCSVImport()">Cancel</button>
+      <button class="btn-secondary" onclick="closeModal('csv-modal')">Cancel</button>
       <button class="btn-confirm" onclick="importCSV()">Import</button>
     </div>
   </div>
@@ -450,232 +442,169 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-// ══ State ══════════════════════════════════════════════════════════════════
-const S={
-  mode:'admin',apiKey:'',binId:'',userName:'',
-  catalogue:[],locations:['Location A','Location B'],
+var S = {
+  mode:'admin', apiKey:'', binId:'', userName:'',
+  catalogue:[], locations:['Location A','Location B'],
   categories:['Camera','Lighting','Grip'],
-  packList:[],activeListId:null,
-  myLists:[],allLists:[],
-  requests:[],
-  locFilter:'all',catFilter:'all',
-  exportFilter:'all',
-  editingId:null,renamingId:null,
-  lastSyncedAt:0,
-  remoteUpdatedAt:0,
-  isOnline:true,
-  cachedBinData:null,
-  autoSyncTimer:null,
-  pendingWrite:false,   // true when we have unsaved changes to push
+  packList:[], activeListId:null,
+  myLists:[], allLists:[], requests:[],
+  locFilter:'all', catFilter:'all', exportFilter:'all',
+  editingId:null, renamingId:null,
+  batchSelected:[],
+  lastSyncedAt:0, remoteUpdatedAt:0,
+  cachedBinData:null, pendingWrite:false, autoSyncTimer:null,
+  nextId:1, _pendingQty:{}
 };
-const JSONBIN='https://api.jsonbin.io/v3';
+var JSONBIN = 'https://api.jsonbin.io/v3';
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-const id=x=>document.getElementById(x);
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-let _tt;
-function toast(msg,dur=3200){const t=id('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),dur);}
-
-// ── Persist ───────────────────────────────────────────────────────────────
-function saveLocal(){['mode','apiKey','binId','userName'].forEach(k=>localStorage.setItem('nen2_'+k,S[k]));}
-function loadLocal(){['mode','apiKey','binId','userName'].forEach(k=>{S[k]=localStorage.getItem('nen2_'+k)||'';});}
-function saveCacheLocal(){try{localStorage.setItem('nen2_cache_'+S.binId,JSON.stringify(S.cachedBinData));}catch(e){}}
-function loadCacheLocal(){try{S.cachedBinData=JSON.parse(localStorage.getItem('nen2_cache_'+S.binId)||'null');}catch(e){S.cachedBinData=null;}}
-function saveMyListsLocal(){try{localStorage.setItem('nen2_lists_'+S.binId+'_'+S.userName,JSON.stringify(S.myLists));}catch(e){}}
-function loadMyListsLocal(){try{S.myLists=JSON.parse(localStorage.getItem('nen2_lists_'+S.binId+'_'+S.userName)||'[]');}catch(e){S.myLists=[];}}
-function markPendingWrite(){S.pendingWrite=true;try{localStorage.setItem('nen2_pending_'+S.binId+'_'+S.userName,'1');}catch(e){}}
-function clearPendingWrite(){S.pendingWrite=false;try{localStorage.removeItem('nen2_pending_'+S.binId+'_'+S.userName);}catch(e){}}
-function hasPendingWrite(){return!!localStorage.getItem('nen2_pending_'+S.binId+'_'+S.userName);}
-
-// ── Colours ───────────────────────────────────────────────────────────────
-const PALS=[{bg:'#e8f0fb',fg:'#1a5fa8'},{bg:'#e6f2e9',fg:'#2a6b3a'},{bg:'#fbeae8',fg:'#b03a2e'},{bg:'#fef3e2',fg:'#8a5700'},{bg:'#f0eafb',fg:'#6b35b8'},{bg:'#e6f7f7',fg:'#1a7a7a'}];
-function pal(loc){const i=S.locations.indexOf(loc);return PALS[(i>=0?i:0)%PALS.length];}
-function locShort(n){return n.split(/\s+/).map(w=>w[0]||'').join('').toUpperCase().slice(0,3)||'?';}
-function pillHTML(loc){const p=pal(loc);return`<span class="loc-pill" style="background:${p.bg};color:${p.fg}">${esc(locShort(loc))}</span>`;}
-
-// ── Availability ──────────────────────────────────────────────────────────
-// Returns {booked, total} for itemId on a given date (from approved lists)
-function getAvailability(itemId, forDate){
-  const catItem=S.catalogue.find(i=>i.id===itemId);
-  const total=catItem?(catItem.qty||1):1;
-  if(!forDate)return{booked:0,total,available:total};
-  const activeDate=forDate.slice(0,10);
-  let booked=0;
-  S.allLists.forEach(lst=>{
-    if(!lst.approved)return;
-    if(!lst.shootDate||lst.shootDate.slice(0,10)!==activeDate)return;
-    // Don't count current list against itself
-    if(lst.id===S.activeListId)return;
-    (lst.items||[]).forEach(it=>{
-      if(it.id===itemId) booked+=(it.qtyNeeded||1);
-    });
-  });
-  return{booked,total,available:Math.max(0,total-booked)};
+function $(x){ return document.getElementById(x); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+var _tt;
+function toast(msg,dur){
+  dur=dur||3200;
+  var t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove('show');},dur);
 }
 
-function currentShootDate(){return id('shoot-date')?id('shoot-date').value:'';}
+function saveLocal(){ ['mode','apiKey','binId','userName'].forEach(function(k){localStorage.setItem('nen3_'+k,S[k]);}); }
+function loadLocal(){ ['mode','apiKey','binId','userName'].forEach(function(k){S[k]=localStorage.getItem('nen3_'+k)||'';}); }
+function saveCacheLocal(){ try{localStorage.setItem('nen3_cache_'+S.binId,JSON.stringify(S.cachedBinData));}catch(e){} }
+function loadCacheLocal(){ try{S.cachedBinData=JSON.parse(localStorage.getItem('nen3_cache_'+S.binId)||'null');}catch(e){S.cachedBinData=null;} }
+function saveMyListsLocal(){ try{localStorage.setItem('nen3_lists_'+S.binId+'_'+S.userName,JSON.stringify(S.myLists));}catch(e){} }
+function loadMyListsLocal(){ try{S.myLists=JSON.parse(localStorage.getItem('nen3_lists_'+S.binId+'_'+S.userName)||'[]');}catch(e){S.myLists=[];} }
+function markPending(){ S.pendingWrite=true; try{localStorage.setItem('nen3_pending_'+S.binId,'1');}catch(e){} }
+function clearPending(){ S.pendingWrite=false; try{localStorage.removeItem('nen3_pending_'+S.binId);}catch(e){} }
+function hasPending(){ return !!localStorage.getItem('nen3_pending_'+S.binId); }
 
-// ── Online / offline ──────────────────────────────────────────────────────
-function setOnlineStatus(online){
+var PALS=[{bg:'#e8f0fb',fg:'#1a5fa8'},{bg:'#e6f2e9',fg:'#2a6b3a'},{bg:'#fbeae8',fg:'#b03a2e'},{bg:'#fef3e2',fg:'#8a5700'},{bg:'#f0eafb',fg:'#6b35b8'},{bg:'#e6f7f7',fg:'#1a7a7a'}];
+function pal(loc){ var i=S.locations.indexOf(loc); return PALS[(i>=0?i:0)%PALS.length]; }
+function locShort(n){ return n.split(/\s+/).map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,3)||'?'; }
+function pillHTML(loc){ var p=pal(loc); return '<span class="loc-pill" style="background:'+p.bg+';color:'+p.fg+'">'+esc(locShort(loc))+'</span>'; }
+
+function setOnline(online){
   S.isOnline=online;
-  id('offline-banner').style.display=online?'none':'flex';
-  if(online){
-    if(hasPendingWrite()&&S.binId){
-      // flush pending write first, then sync
-      pushListToJSONBin().then(()=>syncAll(true));
-    } else if(S.cachedBinData){
-      syncAll(true);
-    }
-  }
+  $('offline-banner').style.display=online?'none':'flex';
+  if(online && hasPending()){ pushToJSONBin().then(function(){syncAll(true);}); }
+  else if(online){ syncAll(true); }
 }
-window.addEventListener('online',()=>setOnlineStatus(true));
-window.addEventListener('offline',()=>setOnlineStatus(false));
+window.addEventListener('online',function(){setOnline(true);});
+window.addEventListener('offline',function(){setOnline(false);});
 
-// ── Setup ─────────────────────────────────────────────────────────────────
 function setMode(m){
   S.mode=m;
-  id('mode-admin-btn').classList.toggle('active',m==='admin');
-  id('mode-viewer-btn').classList.toggle('active',m==='viewer');
-  id('admin-setup').style.display=m==='admin'?'':'none';
-  id('viewer-setup').style.display=m==='viewer'?'':'none';
+  $('mode-admin-btn').classList.toggle('active',m==='admin');
+  $('mode-viewer-btn').classList.toggle('active',m==='viewer');
+  $('admin-setup').style.display=m==='admin'?'':'none';
+  $('viewer-setup').style.display=m==='viewer'?'':'none';
 }
 
 async function adminConnect(){
-  const key=id('admin-key').value.trim();
-  if(!key){toast('Paste your JSONBin Master Key first');return;}
-
-  // Guard against a previously-corrupted 'undefined' stored in localStorage
-  const rawStored=localStorage.getItem('nen2_binId')||'';
-  const storedBin=(rawStored&&rawStored!=='undefined'&&rawStored!=='null')?rawStored:'';
-  const manualBin=id('bin-id-input').value.trim();
-  const existing=(manualBin&&manualBin!=='undefined')?manualBin:storedBin;
-
-  S.apiKey=key;S.mode='admin';S.userName='Admin';
-
-  if(existing){
-    S.binId=existing;
-    saveLocal();
-    setSyncStatus('loading','Connecting…');
-    // Verify the bin actually exists before launching
-    try{
-      const check=await fetch(`${JSONBIN}/b/${existing}/latest`,{headers:{'X-Bin-Meta':'false','X-Master-Key':key}});
-      if(!check.ok)throw new Error('Bin not found (HTTP '+check.status+') — creating a new one');
-      await launchApp();
-      return;
-    }catch(e){
-      // Stored bin ID is bad — clear it and fall through to create a new one
-      toast('Stored Bin ID invalid — creating a new catalogue…');
-      localStorage.removeItem('nen2_binId');
-      S.binId='';
-    }
-  }
-
-  setSyncStatus('loading','Creating catalogue…');
-  const btn=document.querySelector('[onclick="adminConnect()"]');
-  if(btn){btn.disabled=true;btn.textContent='Creating…';}
+  var key=$('admin-key').value.trim();
+  if(!key){ toast('Paste your JSONBin Master Key first'); return; }
+  var btn=$('connect-btn'); btn.disabled=true; btn.textContent='Connecting...';
   try{
-    const SAMPLE=[
+    var rawStored=localStorage.getItem('nen3_binId')||'';
+    var storedBin=(rawStored&&rawStored!=='undefined'&&rawStored!=='null')?rawStored:'';
+    var manualBin=$('bin-id-input').value.trim();
+    var existing=(manualBin&&manualBin!=='undefined')?manualBin:storedBin;
+    S.apiKey=key; S.mode='admin'; S.userName='Admin';
+    if(existing){
+      S.binId=existing; saveLocal();
+      var chk=await fetch(JSONBIN+'/b/'+existing+'/latest',{headers:{'X-Bin-Meta':'false','X-Master-Key':key}});
+      if(chk.ok){ await launchApp(); return; }
+      localStorage.removeItem('nen3_binId'); S.binId='';
+      toast('Stored bin invalid - creating a new catalogue...');
+    }
+    setSyncStatus('loading','Creating catalogue...');
+    var SAMPLE=[
       {id:1,name:'Camera body',location:'Location A',category:'Camera',qty:2,subitems:['Battery x2','Charger','Body cap','Strap']},
       {id:2,name:'24-70mm f/2.8 lens',location:'Location A',category:'Camera',qty:1,subitems:['Front cap','Rear cap','Filter ring']},
       {id:3,name:'Strobe / flash',location:'Location A',category:'Lighting',qty:3,subitems:['Power cable','Sync cable','Carry bag']},
       {id:4,name:'Tripod',location:'Location B',category:'Grip',qty:2,subitems:['Ball head','Quick release plate','Carry bag']},
       {id:5,name:'Gimbal',location:'Location B',category:'Grip',qty:1,subitems:['Focus motor','Charging cable','Case']},
     ];
-    const res=await fetch(`${JSONBIN}/b`,{
+    var res=await fetch(JSONBIN+'/b',{
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'NENGearGen2','X-Bin-Private':'false'},
+      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'NENGearGen3','X-Bin-Private':'false'},
       body:JSON.stringify({catalogue:SAMPLE,locations:['Location A','Location B'],categories:['Camera','Lighting','Grip'],nextId:6,teamLists:[],requests:[],updatedAt:Date.now()})
     });
-    const data=await res.json();
-    if(!res.ok)throw new Error(data.message||'JSONBin returned: '+res.status);
-    const newBinId=data&&data.metadata&&data.metadata.id;
-    if(!newBinId)throw new Error('JSONBin did not return a bin ID — check your Master Key and try again');
-    S.binId=newBinId;
-    saveLocal();
-    id('bin-id-field').style.display='';
-    id('bin-id-input').value=S.binId;
+    var data=await res.json();
+    if(!res.ok) throw new Error(data.message||'HTTP '+res.status);
+    var newId=data&&data.metadata&&data.metadata.id;
+    if(!newId) throw new Error('No bin ID returned - check your Master Key');
+    S.binId=newId; saveLocal();
+    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
     await launchApp();
   }catch(e){
-    setSyncStatus('error','Error');
-    toast('Could not connect: '+e.message);
+    setSyncStatus('error','Error'); toast('Could not connect: '+e.message);
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='Connect & open →';}
+    btn.disabled=false; btn.textContent='Connect & open';
   }
 }
 
 async function viewerConnect(){
-  const name=id('viewer-name').value.trim();
-  const binId=id('viewer-bin-id').value.trim();
-  if(!name){toast('Please enter your name');return;}
-  if(!binId){toast('Enter the Bin ID from your admin');return;}
-  S.mode='viewer';S.apiKey='';S.binId=binId;S.userName=name;
-  saveLocal();await launchApp();
+  var name=$('viewer-name').value.trim();
+  var binId=$('viewer-bin-id').value.trim();
+  if(!name){ toast('Please enter your name'); return; }
+  if(!binId){ toast('Enter the Bin ID from your admin'); return; }
+  S.mode='viewer'; S.apiKey=''; S.binId=binId; S.userName=name;
+  saveLocal(); await launchApp();
 }
 
 function logout(){
-  id('app-screen').style.display='none';
-  id('setup-screen').style.display='flex';
   clearInterval(S.autoSyncTimer);
-  S.packList=[];S.myLists=[];S.allLists=[];S.activeListId=null;
+  $('app-screen').style.display='none';
+  $('setup-screen').style.display='flex';
+  S.packList=[]; S.myLists=[]; S.allLists=[]; S.activeListId=null; S.batchSelected=[];
 }
 
 async function launchApp(){
-  id('setup-screen').style.display='none';
-  id('app-screen').style.display='flex';
-  const adm=S.mode==='admin';
-  id('role-badge').textContent=adm?'🔑 Admin':'👁 '+S.userName;
-  id('role-badge').className='badge '+(adm?'badge-admin':'badge-viewer');
-  id('admin-tools').style.display=adm?'':'none';
-  id('viewer-tools').style.display=adm?'none':'';
-  id('share-btn').style.display=adm?'':'none';
-  id('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
-  id('shoot-date').value=new Date().toISOString().slice(0,10);
-  loadMyListsLocal();
-  loadCacheLocal();
-  // Apply cache immediately if available
+  $('setup-screen').style.display='none';
+  $('app-screen').style.display='flex';
+  var adm=S.mode==='admin';
+  $('role-badge').textContent=adm?'Admin':'Viewer';
+  $('role-badge').className='badge '+(adm?'badge-admin':'badge-viewer');
+  $('user-tag').textContent=S.userName||'';
+  $('admin-tools').style.display=adm?'':'none';
+  $('viewer-tools').style.display=adm?'none':'';
+  $('share-btn').style.display=adm?'':'none';
+  $('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
+  $('shoot-date').value=new Date().toISOString().slice(0,10);
+  loadMyListsLocal(); loadCacheLocal();
   if(S.cachedBinData) applyBinData(S.cachedBinData);
   await syncAll();
-  // Auto-sync every 15s so location/category changes reach viewers quickly
-  S.autoSyncTimer=setInterval(()=>syncAll(true),15000);
+  S.autoSyncTimer=setInterval(function(){syncAll(true);},15000);
 }
 
-// ── Sync ──────────────────────────────────────────────────────────────────
-function setSyncStatus(status,label){
-  const cls={'ok':'','error':' error','loading':' loading','offline':' offline'}[status]||'';
-  id('sync-dot').className='sync-dot'+cls;
-  id('sync-label').textContent=label;
+function setSyncStatus(st,label){
+  var cls={ok:'',error:' error',loading:' loading',offline:' offline'}[st]||'';
+  $('sync-dot').className='sync-dot'+cls;
+  $('sync-label').textContent=label;
 }
 
-async function syncAll(silent=false){
-  if(!navigator.onLine){setSyncStatus('offline','Offline');id('offline-banner').style.display='flex';return;}
-  id('offline-banner').style.display='none';
-  if(!silent)setSyncStatus('loading','Syncing…');
+async function syncAll(silent){
+  if(!navigator.onLine){ setSyncStatus('offline','Offline'); $('offline-banner').style.display='flex'; return; }
+  $('offline-banner').style.display='none';
+  if(!silent) setSyncStatus('loading','Syncing...');
   try{
-    const headers={'X-Bin-Meta':'false'};
-    if(S.apiKey)headers['X-Master-Key']=S.apiKey;
-    const res=await fetch(`${JSONBIN}/b/${S.binId}/latest`,{headers});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    const rec=data.record||data;
-    if(!rec||typeof rec!=='object')throw new Error('Unexpected response from JSONBin');
-
-    // Conflict check: remote updated since we last read it
-    const remoteTs=rec.updatedAt||0;
+    var headers={'X-Bin-Meta':'false'};
+    if(S.apiKey) headers['X-Master-Key']=S.apiKey;
+    var res=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:headers});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    var rec=data.record||data;
+    if(!rec||typeof rec!=='object') throw new Error('Unexpected response shape');
+    var remoteTs=rec.updatedAt||0;
     if(S.lastSyncedAt>0&&S.remoteUpdatedAt>0&&remoteTs>S.remoteUpdatedAt){
-      id('conflict-banner').style.display='flex';
+      $('conflict-banner').style.display='flex';
     }
-    S.remoteUpdatedAt=remoteTs;
-    S.lastSyncedAt=Date.now();
-
+    S.remoteUpdatedAt=remoteTs; S.lastSyncedAt=Date.now();
     applyBinData(rec);
-    S.cachedBinData=rec;
-    saveCacheLocal();
-    setSyncStatus('ok','Synced');
+    S.cachedBinData=rec; saveCacheLocal(); setSyncStatus('ok','Synced');
   }catch(e){
     setSyncStatus('error','Sync failed');
-    if(!silent)toast('Sync failed: '+e.message);
-    // Fall back to cache
-    if(S.cachedBinData)applyBinData(S.cachedBinData);
+    if(!silent) toast('Sync failed: '+e.message);
+    if(S.cachedBinData) applyBinData(S.cachedBinData);
   }
 }
 
@@ -686,828 +615,721 @@ function applyBinData(rec){
   S.nextId=rec.nextId||S.catalogue.length+1;
   S.allLists=rec.teamLists||[];
   S.requests=rec.requests||[];
-  renderFilters();renderCatalogue();renderList();renderSavedLists();renderAdminRequests();
+  renderFilters(); renderCatalogue(); renderList(); renderSavedLists(); renderAdminRequests();
 }
 
-function resolveConflict(){id('conflict-banner').style.display='none';syncAll();}
+function resolveConflict(){ $('conflict-banner').style.display='none'; syncAll(); }
+async function manualSync(){ $('conflict-banner').style.display='none'; await syncAll(); }
 
-async function saveBin(showConflictCheck=true){
-  if(S.mode!=='admin')return;
-  if(!navigator.onLine){markPendingWrite();toast('Offline — will sync when reconnected');return;}
-  setSyncStatus('loading','Saving…');
+async function saveBin(){
+  if(S.mode!=='admin') return;
+  if(!navigator.onLine){ markPending(); toast('Offline - will sync when reconnected'); return; }
+  setSyncStatus('loading','Saving...');
   try{
-    const payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,updatedAt:Date.now()};
-    const res=await fetch(`${JSONBIN}/b/${S.binId}`,{
+    var payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,updatedAt:Date.now()};
+    var res=await fetch(JSONBIN+'/b/'+S.binId,{
       method:'PUT',
       headers:{'Content-Type':'application/json','X-Master-Key':S.apiKey},
       body:JSON.stringify(payload)
     });
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    S.remoteUpdatedAt=payload.updatedAt;
-    S.lastSyncedAt=Date.now();
-    S.cachedBinData=payload;
-    saveCacheLocal();
-    clearPendingWrite();
-    setSyncStatus('ok','Saved');
-  }catch(e){setSyncStatus('error','Save failed');toast('Save failed: '+e.message);}
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    S.remoteUpdatedAt=payload.updatedAt; S.lastSyncedAt=Date.now();
+    S.cachedBinData=payload; saveCacheLocal(); clearPending(); setSyncStatus('ok','Saved');
+  }catch(e){ setSyncStatus('error','Save failed'); markPending(); toast('Save failed: '+e.message); }
 }
 
-async function manualSync(){id('conflict-banner').style.display='none';await syncAll();}
+async function pushToJSONBin(){
+  if(!navigator.onLine){ markPending(); toast('Saved locally - will sync when reconnected'); return; }
+  if(S.mode==='admin'){ await saveBin(); return; }
+  setSyncStatus('loading','Saving...');
+  try{
+    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
+    if(!getRes.ok) throw new Error('HTTP '+getRes.status);
+    var data=await getRes.json(); var rec=data.record||data;
+    var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
+    var merged=otherLists.concat(S.myLists);
+    var myReqs=S.requests.filter(function(r){return r.requester===S.userName;});
+    var otherReqs=(rec.requests||[]).filter(function(r){return r.requester!==S.userName;});
+    var mergedReqs=otherReqs.concat(myReqs);
+    var body=Object.assign({},rec,{teamLists:merged,requests:mergedReqs,updatedAt:Date.now()});
+    var putRes=await fetch(JSONBIN+'/b/'+S.binId,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    if(!putRes.ok) throw new Error('HTTP '+putRes.status);
+    setSyncStatus('ok','Synced'); clearPending(); toast('Saved & synced');
+  }catch(e){ setSyncStatus('error','Sync failed'); markPending(); toast('Saved locally - will retry'); }
+}
 
-// ── Filters ───────────────────────────────────────────────────────────────
 function renderFilters(){
-  // Location filter - use data-val attribute to avoid quote injection in onclick
-  let lhtml=`<button class="filter-chip${S.locFilter==='all'?' active':''}" data-loc="all">All</button>`;
-  S.locations.forEach(loc=>{
-    const p=pal(loc);const active=S.locFilter===loc;
-    lhtml+=`<button class="filter-chip${active?' active':''}" data-loc="${esc(loc)}">
-      <span style="display:inline-block;background:${p.bg};color:${p.fg};padding:0 4px;border-radius:8px;font-size:9px;font-weight:700">${esc(locShort(loc))}</span>
-      <span style="font-size:10px;margin-left:2px">${esc(loc)}</span>
-    </button>`;
+  var lh='<button class="filter-chip'+(S.locFilter==='all'?' active':'')+'" data-loc="all">All</button>';
+  S.locations.forEach(function(loc){
+    var p=pal(loc);
+    lh+='<button class="filter-chip'+(S.locFilter===loc?' active':'')+'" data-loc="'+esc(loc)+'">'
+      +'<span style="background:'+p.bg+';color:'+p.fg+';padding:0 4px;border-radius:8px;font-size:9px;font-weight:700">'+esc(locShort(loc))+'</span>'
+      +' <span style="font-size:10px">'+esc(loc)+'</span></button>';
   });
-  id('loc-filter-row').innerHTML=lhtml;
-  id('loc-filter-row').querySelectorAll('[data-loc]').forEach(btn=>{
-    btn.addEventListener('click',()=>setLocFilter(btn.dataset.loc));
+  $('loc-filter-row').innerHTML=lh;
+  $('loc-filter-row').onclick=function(e){
+    var b=e.target.closest('[data-loc]');
+    if(b){ S.locFilter=b.dataset.loc; renderFilters(); renderCatalogue(); }
+  };
+  var ch='<button class="filter-chip'+(S.catFilter==='all'?' active':'')+'" data-cat="all">All</button>';
+  S.categories.forEach(function(cat){
+    ch+='<button class="filter-chip'+(S.catFilter===cat?' active':'')+'" data-cat="'+esc(cat)+'">'+esc(cat)+'</button>';
   });
-
-  // Category filter
-  let chtml=`<button class="filter-chip${S.catFilter==='all'?' active':''}" data-cat="all">All</button>`;
-  S.categories.forEach(cat=>{
-    const active=S.catFilter===cat;
-    chtml+=`<button class="filter-chip${active?' active':''}" data-cat="${esc(cat)}">${esc(cat)}</button>`;
-  });
-  id('cat-filter-row').innerHTML=chtml;
-  id('cat-filter-row').querySelectorAll('[data-cat]').forEach(btn=>{
-    btn.addEventListener('click',()=>setCatFilter(btn.dataset.cat));
-  });
-}
-function setLocFilter(f){S.locFilter=f;renderFilters();renderCatalogue();}
-function setCatFilter(f){S.catFilter=f;renderFilters();renderCatalogue();}
-
-// ── Catalogue ─────────────────────────────────────────────────────────────
-function renderCatalogue(){
-  const mLoc=id('m-loc');
-  if(mLoc){const cur=mLoc.value;mLoc.innerHTML=S.locations.map(l=>`<option value="${esc(l)}"${l===cur?' selected':''}>${esc(l)}</option>`).join('');}
-  const mCat=id('m-cat');
-  if(mCat){const cur=mCat.value;mCat.innerHTML=['(none)',...S.categories].map(cat2=>`<option value="${esc(cat2)}"${cat2===cur?' selected':''}>${esc(cat2)}</option>`).join('');}
-
-  const search=(id('search-input').value||'').toLowerCase();
-  const shootDate=currentShootDate();
-  let items=[...S.catalogue];
-  if(S.locFilter!=='all')items=items.filter(i=>i.location===S.locFilter);
-  if(S.catFilter!=='all')items=items.filter(i=>i.category===S.catFilter);
-  if(search)items=items.filter(i=>i.name.toLowerCase().includes(search)||(i.subitems||[]).some(s=>s.toLowerCase().includes(search)));
-
-  const list=id('cat-list');
-  if(!items.length){list.innerHTML=`<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">${S.catalogue.length?'No matches':'No gear yet'}</div>`;return;}
-  const isAdmin=S.mode==='admin';
-  list.innerHTML=items.map(item=>{
-    const inList=S.packList.find(p=>p.id===item.id);
-    const c=pal(item.location);
-    const qty=item.qty||1;
-    const avail=getAvailability(item.id,shootDate);
-    const fullyBooked=shootDate&&avail.available<=0&&!inList;
-    const partiallyBooked=shootDate&&avail.booked>0&&avail.available>0;
-
-    let availLabel='';
-    if(qty>1){
-      if(fullyBooked) availLabel=`<div class="cat-qty" style="color:var(--red)">Unavailable on this date</div>`;
-      else if(partiallyBooked) availLabel=`<div class="cat-qty" style="color:var(--amber)">${avail.available} of ${qty} available</div>`;
-      else availLabel=`<div class="cat-qty">${qty} available</div>`;
-    } else if(fullyBooked){
-      availLabel=`<div class="cat-qty" style="color:var(--red)">Unavailable on this date</div>`;
-    }
-
-    return`<div class="cat-item${inList?' in-list':''}${fullyBooked?' cat-item-unavail':''}">
-      <div class="cat-item-top">
-        <span class="cat-name${isAdmin?' clickable':''}" data-editid="${isAdmin?item.id:-1}">${esc(item.name)}</span>
-        <span class="loc-pill" style="background:${c.bg};color:${c.fg}">${esc(locShort(item.location))}</span>
-        <div class="item-actions">
-          ${isAdmin?`<button class="icon-btn" onclick="quickDeleteItem(${item.id},event)" title="Remove from catalogue" style="color:var(--text3)">&#128465;</button>`:''}
-          <button class="add-item-btn${inList?' added':''}${fullyBooked?' disabled':''}"
-            onclick="handleAddItem(${item.id},${fullyBooked})"
-            ${fullyBooked?'style="opacity:.45;cursor:not-allowed"':''}>${inList?'✓':'+ Add'}</button>
-        </div>
-      </div>
-      ${item.category&&item.category!=='(none)'?`<div style="margin-top:2px"><span class="cat-chip">${esc(item.category)}</span></div>`:''}
-      ${availLabel}
-      ${item.subitems&&item.subitems.length?`<div class="cat-subs">${item.subitems.map(s=>'· '+esc(s)).join('  ')}</div>`:''}
-    </div>`;
-  }).join('');
-
-  // Use onclick (replaces itself each render, no stacking)
-  list.onclick=function(e){
-    const editSpan=e.target.closest('[data-editid]');
-    if(editSpan&&S.mode==='admin'){
-      const eid=parseInt(editSpan.dataset.editid);
-      if(eid>0) openItemModal(eid);
-    }
+  $('cat-filter-row').innerHTML=ch;
+  $('cat-filter-row').onclick=function(e){
+    var b=e.target.closest('[data-cat]');
+    if(b){ S.catFilter=b.dataset.cat; renderFilters(); renderCatalogue(); }
   };
 }
 
-async function quickDeleteItem(itemId,e){
-  e.stopPropagation();
-  if(!confirm('Remove this item from the catalogue?'))return;
-  S.catalogue=S.catalogue.filter(i=>i.id!==itemId);
-  S.packList=S.packList.filter(i=>i.id!==itemId);
-  renderCatalogue();renderList();await saveBin();
+function getAvailability(itemId,forDate){
+  var catItem=S.catalogue.find(function(i){return i.id===itemId;});
+  var total=catItem?(catItem.qty||1):1;
+  if(!forDate) return {booked:0,total:total,available:total};
+  var activeDate=forDate.slice(0,10);
+  var booked=0;
+  S.allLists.forEach(function(lst){
+    if(!lst.approved) return;
+    if(!lst.shootDate||lst.shootDate.slice(0,10)!==activeDate) return;
+    if(lst.id===S.activeListId) return;
+    (lst.items||[]).forEach(function(it){ if(it.id===itemId) booked+=(it.qtyNeeded||1); });
+  });
+  return {booked:booked,total:total,available:Math.max(0,total-booked)};
 }
 
-// ── Pack list (with drag-to-reorder) ─────────────────────────────────────
-function handleAddItem(itemId, fullyBooked){
-  if(fullyBooked){toast('Fully booked on this date');return;}
-  toggleItem(itemId);
+function renderCatalogue(){
+  var mLoc=$('m-loc');
+  if(mLoc){ var curL=mLoc.value; mLoc.innerHTML=S.locations.map(function(l){return '<option value="'+esc(l)+'"'+(l===curL?' selected':'')+'>'+esc(l)+'</option>';}).join(''); }
+  var mCat=$('m-cat');
+  if(mCat){ var curC=mCat.value; mCat.innerHTML=['(none)'].concat(S.categories).map(function(c){return '<option value="'+esc(c)+'"'+(c===curC?' selected':'')+'>'+esc(c)+'</option>';}).join(''); }
+  var search=($('search-input').value||'').toLowerCase();
+  var shootDate=$('shoot-date')?$('shoot-date').value:'';
+  var isAdmin=S.mode==='admin';
+  var items=S.catalogue.slice();
+  if(S.locFilter!=='all') items=items.filter(function(i){return i.location===S.locFilter;});
+  if(S.catFilter!=='all') items=items.filter(function(i){return i.category===S.catFilter;});
+  if(search) items=items.filter(function(i){return i.name.toLowerCase().includes(search)||(i.subitems||[]).some(function(s){return s.toLowerCase().includes(search);});});
+  var list=$('cat-list');
+  if(!items.length){ list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">'+(S.catalogue.length?'No matches':'No gear yet - add some below')+'</div>'; return; }
+  list.innerHTML=items.map(function(item){
+    var inListItem=S.packList.find(function(p){return p.id===item.id;});
+    var qty=item.qty||1;
+    var avail=getAvailability(item.id,shootDate);
+    var fullyBooked=!!(shootDate&&avail.available<=0&&!inListItem);
+    var c=pal(item.location);
+    var checked=S.batchSelected.indexOf(item.id)>=0;
+    var availHTML='';
+    if(qty>1){
+      if(fullyBooked) availHTML='<div class="cat-avail" style="color:var(--red)">Unavailable on this date</div>';
+      else if(avail.booked>0) availHTML='<div class="cat-avail" style="color:var(--amber)">'+avail.available+' of '+qty+' available</div>';
+      else availHTML='<div class="cat-avail" style="color:var(--text3)">'+qty+' available</div>';
+    } else if(fullyBooked){
+      availHTML='<div class="cat-avail" style="color:var(--red)">Unavailable on this date</div>';
+    }
+    var maxQty=shootDate?avail.available:qty;
+    var currentQtyNeeded=inListItem?(inListItem.qtyNeeded||1):((S._pendingQty[item.id])||1);
+    var qtyOpts='';
+    for(var qi=1;qi<=Math.max(1,maxQty);qi++){
+      qtyOpts+='<option value="'+qi+'"'+(currentQtyNeeded===qi?' selected':'')+'>'+qi+'</option>';
+    }
+    var qtyHTML=qty>1&&!fullyBooked?'<div class="cat-qty-row"><label>Qty needed:</label><select class="qty-select" data-qtyid="'+item.id+'">'+qtyOpts+'</select></div>':'';
+    var addLabel=inListItem?'In list':fullyBooked?'Booked':'+ Add';
+    return '<div class="cat-item'+(inListItem?' in-list':'')+(fullyBooked?' unavail':'')+'" data-id="'+item.id+'">'
+      +'<div class="cat-item-top">'
+      +'<input type="checkbox" class="cat-check"'+(checked?' checked':'')+(fullyBooked?' disabled':'')+' data-checkid="'+item.id+'" />'
+      +'<span class="cat-name" data-editid="'+(isAdmin?item.id:-1)+'">'+esc(item.name)+'</span>'
+      +'<span class="loc-pill" style="background:'+c.bg+';color:'+c.fg+'">'+esc(locShort(item.location))+'</span>'
+      +(isAdmin?'<button class="admin-icon-btn" data-delid="'+item.id+'" title="Remove">&#x1F5D1;</button>':'')
+      +'<button class="add-btn'+(inListItem?' added':'')+(fullyBooked?' disabled':'')+'" data-addid="'+item.id+'"'+(fullyBooked?' disabled':'')+'>'+addLabel+'</button>'
+      +'</div>'
+      +(item.category&&item.category!=='(none)'?'<div style="margin-top:2px"><span class="cat-chip">'+esc(item.category)+'</span></div>':'')
+      +availHTML
+      +qtyHTML
+      +(item.subitems&&item.subitems.length?'<div class="cat-subs">'+item.subitems.map(function(s){return '- '+esc(s);}).join('  ')+'</div>':'')
+      +'</div>';
+  }).join('');
+  list.onclick=function(e){
+    var addBtn=e.target.closest('[data-addid]');
+    if(addBtn&&!addBtn.disabled){ toggleItem(parseInt(addBtn.dataset.addid)); return; }
+    var editSpan=e.target.closest('[data-editid]');
+    if(editSpan&&parseInt(editSpan.dataset.editid)>0&&isAdmin){ openItemModal(parseInt(editSpan.dataset.editid)); return; }
+    var delBtn=e.target.closest('[data-delid]');
+    if(delBtn&&isAdmin){ quickDeleteItem(parseInt(delBtn.dataset.delid)); return; }
+    var chk=e.target.closest('[data-checkid]');
+    if(chk&&!chk.disabled){ toggleBatch(parseInt(chk.dataset.checkid)); return; }
+  };
+  list.onchange=function(e){
+    var sel=e.target.closest('[data-qtyid]');
+    if(sel){ setCatalogueQty(parseInt(sel.dataset.qtyid),parseInt(sel.value)); }
+  };
+}
+
+function toggleBatch(itemId){
+  var idx=S.batchSelected.indexOf(itemId);
+  if(idx>=0) S.batchSelected.splice(idx,1); else S.batchSelected.push(itemId);
+  var n=S.batchSelected.length;
+  $('batch-bar').style.display=n>0?'flex':'none';
+  $('batch-count').textContent=n+' selected';
+  var chk=document.querySelector('[data-checkid="'+itemId+'"]');
+  if(chk) chk.checked=S.batchSelected.indexOf(itemId)>=0;
+}
+function clearBatch(){ S.batchSelected=[]; $('batch-bar').style.display='none'; renderCatalogue(); }
+function addBatchToList(){
+  S.batchSelected.forEach(function(itemId){
+    if(S.packList.find(function(p){return p.id===itemId;})) return;
+    var item=S.catalogue.find(function(i){return i.id===itemId;});
+    if(item) S.packList.push(Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:1}));
+  });
+  clearBatch(); renderCatalogue(); renderList(); toast('Items added to list');
+}
+function setCatalogueQty(itemId,qty){
+  var pi=S.packList.findIndex(function(p){return p.id===itemId;});
+  if(pi>=0) S.packList[pi].qtyNeeded=qty;
+  S._pendingQty[itemId]=qty;
 }
 
 function toggleItem(itemId){
-  const idx=S.packList.findIndex(p=>p.id===itemId);
-  if(idx>=0){S.packList.splice(idx,1);renderCatalogue();renderList();return;}
-  const item=S.catalogue.find(i=>i.id===itemId);
-  if(!item)return;
-  const qty=item.qty||1;
-  if(qty>1){
-    // Show qty picker inline
-    openQtyPicker(item);
-  } else {
-    S.packList.push({...item,subitems:[...(item.subitems||[])],note:'',noteOpen:false,qtyNeeded:1});
-    renderCatalogue();renderList();
-  }
+  var idx=S.packList.findIndex(function(p){return p.id===itemId;});
+  if(idx>=0){ S.packList.splice(idx,1); renderCatalogue(); renderList(); return; }
+  var item=S.catalogue.find(function(i){return i.id===itemId;});
+  if(!item) return;
+  var qty=(S._pendingQty&&S._pendingQty[itemId])||1;
+  S.packList.push(Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:qty}));
+  renderCatalogue(); renderList();
 }
-
-function openQtyPicker(item){
-  const shootDate=currentShootDate();
-  const avail=getAvailability(item.id,shootDate);
-  const max=shootDate?avail.available:item.qty;
-  // Build modal content dynamically
-  const overlay=document.createElement('div');
-  overlay.className='modal-overlay';
-  overlay.id='qty-overlay';
-  overlay.innerHTML=`<div class="modal" style="max-width:320px">
-    <h3>How many do you need?</h3>
-    <p class="modal-sub">${esc(item.name)} — ${max} available${shootDate?' on this date':''}</p>
-    <div class="field"><label>Quantity</label>
-      <select id="qty-select">
-        ${Array.from({length:Math.max(1,max)},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}
-      </select>
-    </div>
-    <div class="modal-btns">
-      <button class="btn-secondary" onclick="document.getElementById('qty-overlay').remove()">Cancel</button>
-      <button class="btn-confirm" onclick="confirmQtyAdd(${item.id})">Add to list</button>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+function updateListQty(itemId,qty){
+  var pi=S.packList.findIndex(function(p){return p.id===itemId;});
+  if(pi>=0) S.packList[pi].qtyNeeded=qty;
 }
-
-function confirmQtyAdd(itemId){
-  const qty=parseInt(id('qty-select').value)||1;
-  const overlay=id('qty-overlay');if(overlay)overlay.remove();
-  const item=S.catalogue.find(i=>i.id===itemId);
-  if(!item)return;
-  S.packList.push({...item,subitems:[...(item.subitems||[])],note:'',noteOpen:false,qtyNeeded:qty});
-  renderCatalogue();renderList();
-}
-function removeItem(itemId){S.packList=S.packList.filter(p=>p.id!==itemId);renderCatalogue();renderList();}
+function removeItem(itemId){ S.packList=S.packList.filter(function(p){return p.id!==itemId;}); renderCatalogue(); renderList(); }
 function clearList(){
-  S.packList=[];S.activeListId=null;
-  id('shoot-name').value='';id('shoot-date').value=new Date().toISOString().slice(0,10);
-  id('current-list-tag').style.display='none';
-  renderCatalogue();renderList();renderSavedLists();
+  S.packList=[]; S.activeListId=null; S.batchSelected=[];
+  $('shoot-name').value=''; $('shoot-date').value=new Date().toISOString().slice(0,10);
+  $('list-tag').style.display='none'; $('batch-bar').style.display='none';
+  renderCatalogue(); renderList(); renderSavedLists();
 }
 
-let dragSrcIdx=null;
+var dragSrcIdx=null;
 function renderList(){
-  id('count-label').textContent=S.packList.length+' item'+(S.packList.length!==1?'s':'')+' selected';
-  const scroll=id('list-scroll');
-  if(!S.packList.length){scroll.innerHTML='<div class="empty">Add gear from the catalogue</div>';return;}
-  const byLoc={};
-  S.packList.forEach((item,i)=>{if(!byLoc[item.location])byLoc[item.location]=[];byLoc[item.location].push({item,idx:i});});
-  scroll.innerHTML=Object.entries(byLoc).map(([loc,entries])=>`
-    <div class="loc-section">
-      <div class="loc-header">${pillHTML(loc)} ${esc(loc)}</div>
-      ${entries.map(({item,idx})=>`
-        <div class="list-row" draggable="true"
-          data-idx="${idx}"
-          ondragstart="dragStart(event,${idx})"
-          ondragover="dragOver(event,${idx})"
-          ondrop="dragDrop(event,${idx})"
-          ondragend="dragEnd(event)">
-          <span class="drag-handle" title="Drag to reorder">⠿</span>
-          <div class="list-row-info">
-            <div class="list-row-name">${esc(item.name)}${(item.qtyNeeded||1)>1?` <span style="font-size:10px;font-weight:400;color:var(--text3)">x${item.qtyNeeded}</span>`:''}</div>
-            ${item.subitems&&item.subitems.length?`<div class="list-row-subs">${item.subitems.map(s=>'· '+esc(s)).join('  ')}</div>`:''}
-            <div class="note-field">
-              ${item.noteOpen?`<textarea class="note-input" rows="1" placeholder="Add a note…" oninput="updateNote(${idx},this.value)">${esc(item.note||'')}</textarea>`
-              :`<button class="note-toggle" onclick="toggleNote(${idx})">${item.note?'[note] '+esc(item.note):'+ note'}</button>`}
-            </div>
-          </div>
-          <div class="list-row-actions">
-            <button class="remove-btn" onclick="removeItem(${item.id})">✕</button>
-          </div>
-        </div>`).join('')}
-    </div>`).join('');
+  $('count-label').textContent=S.packList.length+' item'+(S.packList.length!==1?'s':'')+' selected';
+  var scroll=$('list-scroll');
+  if(!S.packList.length){ scroll.innerHTML='<div class="empty-list">Add gear from the catalogue</div>'; return; }
+  var byLoc={};
+  S.packList.forEach(function(item,i){ if(!byLoc[item.location]) byLoc[item.location]=[]; byLoc[item.location].push({item:item,idx:i}); });
+  var html='';
+  Object.keys(byLoc).forEach(function(loc){
+    var entries=byLoc[loc];
+    html+='<div class="loc-section"><div class="loc-header-row">'+pillHTML(loc)+' '+esc(loc)+'</div>';
+    entries.forEach(function(e){
+      var item=e.item; var idx=e.idx;
+      var maxQty=item.qty||1;
+      var qtyPart='';
+      if(maxQty>1){
+        var opts='';
+        for(var qi=1;qi<=maxQty;qi++){ opts+='<option value="'+qi+'"'+((item.qtyNeeded||1)===qi?' selected':'')+'>'+qi+'</option>'; }
+        qtyPart='<select class="list-qty-select" onchange="updateListQty('+item.id+',parseInt(this.value))">'+opts+'</select>';
+      } else {
+        qtyPart='<span style="font-size:10px;color:var(--text3)">x1</span>';
+      }
+      html+='<div class="list-row" draggable="true" data-idx="'+idx+'"'
+        +' ondragstart="dragStart(event,'+idx+')" ondragover="dragOver(event,'+idx+')"'
+        +' ondrop="dragDrop(event,'+idx+')" ondragend="dragEnd(event)">'
+        +'<span class="drag-handle">&#8286;</span>'
+        +'<div class="list-row-info">'
+        +'<div class="list-row-name">'+esc(item.name)+' '+qtyPart+'</div>'
+        +(item.subitems&&item.subitems.length?'<div class="list-row-subs">'+item.subitems.map(function(s){return '- '+esc(s);}).join('  ')+'</div>':'')
+        +(item.noteOpen
+          ?'<textarea class="note-input" rows="1" placeholder="Add a note..." oninput="updateNote('+idx+',this.value)">'+esc(item.note||'')+'</textarea>'
+          :'<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ note')+'</button>')
+        +'</div>'
+        +'<div class="list-row-actions"><button class="remove-btn" onclick="removeItem('+item.id+')">x</button></div>'
+        +'</div>';
+    });
+    html+='</div>';
+  });
+  scroll.innerHTML=html;
+}
+function dragStart(e,idx){ dragSrcIdx=idx; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function dragOver(e,idx){ e.preventDefault(); document.querySelectorAll('.list-row').forEach(function(r){r.classList.remove('drag-over');}); e.currentTarget.classList.add('drag-over'); }
+function dragDrop(e,idx){ e.preventDefault(); if(dragSrcIdx===null||dragSrcIdx===idx) return; var moved=S.packList.splice(dragSrcIdx,1)[0]; S.packList.splice(idx,0,moved); dragSrcIdx=null; renderList(); }
+function dragEnd(e){ e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.list-row').forEach(function(r){r.classList.remove('drag-over');}); }
+function toggleNote(idx){ S.packList[idx].noteOpen=!S.packList[idx].noteOpen; renderList(); }
+function updateNote(idx,val){ S.packList[idx].note=val; }
+
+async function quickDeleteItem(itemId){
+  if(!confirm('Remove this item from the catalogue?')) return;
+  S.catalogue=S.catalogue.filter(function(i){return i.id!==itemId;});
+  S.packList=S.packList.filter(function(i){return i.id!==itemId;});
+  renderCatalogue(); renderList(); await saveBin();
 }
 
-function dragStart(e,idx){dragSrcIdx=idx;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';}
-function dragOver(e,idx){e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.list-row').forEach(r=>r.classList.remove('drag-over'));e.currentTarget.classList.add('drag-over');}
-function dragDrop(e,idx){
-  e.preventDefault();
-  if(dragSrcIdx===null||dragSrcIdx===idx)return;
-  const moved=S.packList.splice(dragSrcIdx,1)[0];
-  S.packList.splice(idx,0,moved);
-  dragSrcIdx=null;renderList();
-}
-function dragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.list-row').forEach(r=>r.classList.remove('drag-over'));}
-
-function toggleNote(idx){S.packList[idx].noteOpen=!S.packList[idx].noteOpen;renderList();}
-function updateNote(idx,val){S.packList[idx].note=val;}
-
-// ── Saved lists ───────────────────────────────────────────────────────────
 function renderSavedLists(){
-  const scroll=id('lists-scroll');
-  const search=(id('lists-search').value||'').toLowerCase();
-  const isAdmin=S.mode==='admin';
-
-  function matchSearch(lst){
-    if(!search)return true;
-    if((lst.name||'').toLowerCase().includes(search))return true;
-    if((lst.shootName||'').toLowerCase().includes(search))return true;
-    if((lst.shootDate||'').includes(search))return true;
-    return false;
-  }
-
+  var scroll=$('lists-scroll');
+  var search=($('lists-search').value||'').toLowerCase();
+  var isAdmin=S.mode==='admin';
+  function matchSearch(lst){ if(!search) return true; return (lst.name||'').toLowerCase().includes(search)||(lst.shootName||'').toLowerCase().includes(search)||(lst.shootDate||'').includes(search); }
   if(isAdmin){
-    const all=[...S.allLists].filter(matchSearch).sort((a,b)=>{
-      const na=(a.owner||'').toLowerCase(),nb=(b.owner||'').toLowerCase();
+    var all=S.allLists.filter(matchSearch).slice().sort(function(a,b){
+      var na=(a.owner||'').toLowerCase(),nb=(b.owner||'').toLowerCase();
       return na!==nb?na.localeCompare(nb):(b.savedAt||0)-(a.savedAt||0);
     });
-    if(!all.length){scroll.innerHTML='<div class="lists-empty">No team lists yet.</div>';return;}
-    let html='',lastOwner='';
-    all.forEach(lst=>{
-      if(lst.owner!==lastOwner){html+=`<div class="admin-group-header">${esc(lst.owner||'Unknown')}</div>`;lastOwner=lst.owner;}
-      html+=listItemHTML(lst,true);
-    });
+    if(!all.length){ scroll.innerHTML='<div class="lists-empty">No team lists yet.</div>'; return; }
+    var html=''; var lastOwner='';
+    all.forEach(function(lst){ if(lst.owner!==lastOwner){ html+='<div class="group-header">'+esc(lst.owner||'Unknown')+'</div>'; lastOwner=lst.owner; } html+=sliHTML(lst); });
     scroll.innerHTML=html;
-  }else{
-    const mine=[...S.myLists].filter(matchSearch).sort((a,b)=>(b.savedAt||0)-(a.savedAt||0));
-    if(!mine.length){scroll.innerHTML='<div class="lists-empty">No saved lists yet.<br>Build a list and press "Save".</div>';return;}
-    scroll.innerHTML=mine.map(lst=>listItemHTML(lst,true)).join('');
+  } else {
+    var mine=S.myLists.filter(matchSearch).slice().sort(function(a,b){return (b.savedAt||0)-(a.savedAt||0);});
+    if(!mine.length){ scroll.innerHTML='<div class="lists-empty">No saved lists yet.<br>Build a list and press Save.</div>'; return; }
+    scroll.innerHTML=mine.map(sliHTML).join('');
   }
 }
 
-function listItemHTML(lst,canEdit){
-  const active=S.activeListId===lst.id;
-  const isAdmin=S.mode==='admin';
-  const dateStr=lst.shootDate?new Date(lst.shootDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
-  const count=(lst.items||[]).length;
-  const approvedHTML=lst.approved
-    ?`<div><span class="approved-badge">Approved</span></div>`
-    :'';
-  const approveBtn=isAdmin
-    ?(lst.approved
-      ?`<button class="unapprove-btn" onclick="toggleApprove('${esc(lst.id)}',event)">Remove approval</button>`
-      :`<button class="approve-btn" onclick="toggleApprove('${esc(lst.id)}',event)">Approve list</button>`)
-    :'';
-  return`<div class="saved-list-item${active?' active':''}" id="sli_${esc(lst.id)}">
-    <div class="sli-top">
-      <div style="flex:1" onclick="loadList('${esc(lst.id)}');closeAllMenus()">
-        <div class="sli-name">${esc(lst.name||'Untitled')}</div>
-        <div class="sli-meta">${dateStr?dateStr+' · ':''}${count} item${count!==1?'s':''}</div>
-        ${lst.shootName?`<div class="sli-shoot">${esc(lst.shootName)}</div>`:''}
-        ${approvedHTML}
-      </div>
-      ${canEdit?`<button class="sli-menu-btn" onclick="toggleListMenu('${esc(lst.id)}',event)">⋮</button>`:''}
-    </div>
-    ${approveBtn?`<div style="padding-top:4px">${approveBtn}</div>`:''}
-    ${canEdit?`<div class="sli-dropdown" id="menu_${esc(lst.id)}" style="display:none">
-      <button onclick="loadList('${esc(lst.id)}');closeAllMenus()">Open</button>
-      <button onclick="duplicateList('${esc(lst.id)}');closeAllMenus()">Duplicate</button>
-      <button onclick="openRenameList('${esc(lst.id)}');closeAllMenus()">Rename</button>
-      <button class="danger" onclick="deleteList('${esc(lst.id)}');closeAllMenus()">Delete</button>
-    </div>`:''}
-  </div>`;
+function sliHTML(lst){
+  var active=S.activeListId===lst.id;
+  var isAdmin=S.mode==='admin';
+  var dateStr=lst.shootDate?new Date(lst.shootDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  var count=(lst.items||[]).length;
+  var approvedBadge=lst.approved?'<div><span class="sli-approved">Approved</span></div>':'';
+  var approveBtn=isAdmin?(lst.approved
+    ?'<button class="unapprove-btn" onclick="toggleApprove(\''+esc(lst.id)+'\',event)">Remove approval</button>'
+    :'<button class="approve-btn" onclick="toggleApprove(\''+esc(lst.id)+'\',event)">Approve list</button>'):'';
+  return '<div class="sli'+(active?' active':'')+'" id="sli_'+esc(lst.id)+'">'
+    +'<div class="sli-top">'
+    +'<div style="flex:1" onclick="loadList(\''+esc(lst.id)+'\');closeAllMenus()">'
+    +'<div class="sli-name">'+esc(lst.name||'Untitled')+'</div>'
+    +'<div class="sli-meta">'+(dateStr?dateStr+' - ':'')+count+' item'+(count!==1?'s':'')+'</div>'
+    +(lst.shootName?'<div class="sli-shoot">'+esc(lst.shootName)+'</div>':'')
+    +approvedBadge
+    +'</div>'
+    +'<button class="sli-menu-btn" onclick="toggleListMenu(\''+esc(lst.id)+'\',event)">&#8942;</button>'
+    +'</div>'
+    +(approveBtn?'<div>'+approveBtn+'</div>':'')
+    +'<div class="sli-dropdown" id="menu_'+esc(lst.id)+'" style="display:none">'
+    +'<button onclick="loadList(\''+esc(lst.id)+'\');closeAllMenus()">Open</button>'
+    +'<button onclick="duplicateList(\''+esc(lst.id)+'\');closeAllMenus()">Duplicate</button>'
+    +'<button onclick="openRenameList(\''+esc(lst.id)+'\');closeAllMenus()">Rename</button>'
+    +'<button class="red" onclick="deleteList(\''+esc(lst.id)+'\');closeAllMenus()">Delete</button>'
+    +'</div>'
+    +'</div>';
 }
 
-async function toggleApprove(listId,e){
-  if(e)e.stopPropagation();
-  const lst=S.allLists.find(l=>l.id===listId)||S.myLists.find(l=>l.id===listId);
-  if(!lst||S.mode!=='admin'){toast('Only admin can approve lists');return;}
-  lst.approved=!lst.approved;
-  lst.approvedAt=lst.approved?Date.now():null;
-  // Mirror into myLists if present
-  const mi=S.myLists.findIndex(l=>l.id===listId);
-  if(mi>=0){S.myLists[mi].approved=lst.approved;S.myLists[mi].approvedAt=lst.approvedAt;}
-  saveMyListsLocal();
-  renderSavedLists();
-  await saveBin();
-  toast(lst.approved?'List approved':'Approval removed');
-}
-
-function toggleListMenu(listId,e){
-  e.stopPropagation();
-  const menuEl=id('menu_'+listId);
-  const wasOpen=menuEl&&menuEl.style.display!=='none';
-  closeAllMenus();
-  if(menuEl&&!wasOpen)menuEl.style.display='block';
-}
-function closeAllMenus(){document.querySelectorAll('.sli-dropdown').forEach(m=>m.style.display='none');}
+function toggleListMenu(listId,e){ e.stopPropagation(); var m=$('menu_'+listId); var was=m&&m.style.display!=='none'; closeAllMenus(); if(m&&!was) m.style.display='block'; }
+function closeAllMenus(){ document.querySelectorAll('.sli-dropdown').forEach(function(m){m.style.display='none';}); }
 document.addEventListener('click',closeAllMenus);
 
 function loadList(listId){
-  const isAdmin=S.mode==='admin';
-  const lst=(isAdmin?S.allLists:S.myLists).find(l=>l.id===listId);
-  if(!lst)return;
-  S.packList=(lst.items||[]).map(i=>({...i,note:i.note||'',noteOpen:false}));
+  var src=S.mode==='admin'?S.allLists:S.myLists;
+  var lst=src.find(function(l){return l.id===listId;});
+  if(!lst) return;
+  S.packList=(lst.items||[]).map(function(i){return Object.assign({},i,{note:i.note||'',noteOpen:false});});
   S.activeListId=lst.id;
-  id('shoot-name').value=lst.shootName||'';
-  id('shoot-date').value=lst.shootDate||new Date().toISOString().slice(0,10);
-  const tag=id('current-list-tag');tag.textContent=lst.name||'Untitled';tag.style.display='';
-  renderCatalogue();renderList();renderSavedLists();
+  $('shoot-name').value=lst.shootName||'';
+  $('shoot-date').value=lst.shootDate||new Date().toISOString().slice(0,10);
+  var tag=$('list-tag'); tag.textContent=lst.name||'Untitled'; tag.style.display='';
+  renderCatalogue(); renderList(); renderSavedLists();
 }
 
 async function duplicateList(listId){
-  const src=S.myLists.find(l=>l.id===listId)||S.allLists.find(l=>l.id===listId);
-  if(!src)return;
-  const newId='list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  const dupe={...src,id:newId,name:'Copy of '+src.name,savedAt:Date.now(),approved:false,approvedAt:null};
+  var src=S.myLists.find(function(l){return l.id===listId;})||S.allLists.find(function(l){return l.id===listId;});
+  if(!src) return;
+  var newId='list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  var dupe=Object.assign({},src,{id:newId,name:'Copy of '+src.name,savedAt:Date.now(),approved:false,approvedAt:null});
   S.myLists.push(dupe);
-  saveMyListsLocal();
-  const ai=S.allLists.findIndex(l=>l.id===newId);
-  if(ai<0) S.allLists.push({...dupe});
-  renderSavedLists();
-  toast('List duplicated');
-  await pushListToJSONBin();
+  if(S.allLists.findIndex(function(l){return l.id===newId;})<0) S.allLists.push(Object.assign({},dupe));
+  saveMyListsLocal(); renderSavedLists(); toast('List duplicated');
+  await pushToJSONBin();
 }
 
 async function deleteList(listId){
-  S.myLists=S.myLists.filter(l=>l.id!==listId);
-  S.allLists=S.allLists.filter(l=>l.id!==listId);
-  if(S.activeListId===listId){S.activeListId=null;id('current-list-tag').style.display='none';}
-  saveMyListsLocal();
-  renderSavedLists();
-  if(S.mode==='admin') await saveBin();
-  else await pushListToJSONBin();
+  S.myLists=S.myLists.filter(function(l){return l.id!==listId;});
+  S.allLists=S.allLists.filter(function(l){return l.id!==listId;});
+  if(S.activeListId===listId){ S.activeListId=null; $('list-tag').style.display='none'; }
+  saveMyListsLocal(); renderSavedLists();
+  if(S.mode==='admin') await saveBin(); else await pushToJSONBin();
 }
 
 function openRenameList(listId){
   S.renamingId=listId;
-  const lst=S.myLists.find(l=>l.id===listId)||S.allLists.find(l=>l.id===listId);
-  id('rename-input').value=lst?lst.name:'';
-  id('rename-modal').style.display='flex';
-  setTimeout(()=>id('rename-input').focus(),50);
-}
-function closeRenameModal(){id('rename-modal').style.display='none';S.renamingId=null;}
-async function confirmRename(){
-  const name=id('rename-input').value.trim();if(!name)return;
-  const mi=S.myLists.findIndex(l=>l.id===S.renamingId);
-  if(mi>=0){S.myLists[mi].name=name;saveMyListsLocal();}
-  const ai=S.allLists.findIndex(l=>l.id===S.renamingId);
-  if(ai>=0) S.allLists[ai].name=name;
-  if(S.activeListId===S.renamingId){const tag=id('current-list-tag');tag.textContent=name;}
-  closeRenameModal();renderSavedLists();
-  await pushListToJSONBin();
+  var lst=S.myLists.find(function(l){return l.id===listId;})||S.allLists.find(function(l){return l.id===listId;});
+  $('rename-input').value=lst?lst.name:'';
+  openModal('rename-modal');
+  setTimeout(function(){$('rename-input').focus();},50);
 }
 
-// Save
-function saveCurrentList(){
-  if(!S.packList.length){toast('Add some gear first');return;}
-  const existing=S.activeListId?(S.myLists.find(l=>l.id===S.activeListId)||{}).name||'':'';
-  id('save-list-name').value=existing||id('shoot-name').value||'';
-  id('save-modal-title').textContent=S.activeListId?'Update list':'Save list';
-  id('save-modal').style.display='flex';
-  setTimeout(()=>id('save-list-name').focus(),50);
+async function confirmRename(){
+  var name=$('rename-input').value.trim(); if(!name) return;
+  var mi=S.myLists.findIndex(function(l){return l.id===S.renamingId;});
+  if(mi>=0){ S.myLists[mi].name=name; saveMyListsLocal(); }
+  var ai=S.allLists.findIndex(function(l){return l.id===S.renamingId;});
+  if(ai>=0) S.allLists[ai].name=name;
+  if(S.activeListId===S.renamingId){ $('list-tag').textContent=name; }
+  closeModal('rename-modal'); renderSavedLists();
+  await pushToJSONBin();
 }
-function closeSaveModal(){id('save-modal').style.display='none';}
+
+function saveCurrentList(){
+  if(!S.packList.length){ toast('Add some gear first'); return; }
+  var existing=S.activeListId?(S.myLists.find(function(l){return l.id===S.activeListId;})||{}).name||'':'';
+  $('save-list-name').value=existing||$('shoot-name').value||'';
+  $('save-modal-title').textContent=S.activeListId?'Update list':'Save list';
+  openModal('save-modal');
+  setTimeout(function(){$('save-list-name').focus();},50);
+}
+
 async function confirmSaveList(){
-  const name=id('save-list-name').value.trim();if(!name){toast('Give the list a name');return;}
-  const listId=S.activeListId||('list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6));
-  const existing=S.allLists.find(l=>l.id===listId)||S.myLists.find(l=>l.id===listId)||{};
-  const listObj={
-    id:listId,owner:S.userName,name,
-    shootName:id('shoot-name').value.trim(),
-    shootDate:id('shoot-date').value,
-    items:S.packList.map(({noteOpen,...rest})=>rest),
+  var name=$('save-list-name').value.trim(); if(!name){ toast('Give the list a name'); return; }
+  var listId=S.activeListId||('list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6));
+  var existing=S.allLists.find(function(l){return l.id===listId;})||S.myLists.find(function(l){return l.id===listId;})||{};
+  var listObj={
+    id:listId, owner:S.userName, name:name,
+    shootName:$('shoot-name').value.trim(),
+    shootDate:$('shoot-date').value,
+    items:S.packList.map(function(i){ var o=Object.assign({},i); delete o.noteOpen; return o; }),
     savedAt:Date.now(),
     approved:existing.approved||false,
     approvedAt:existing.approvedAt||null,
   };
-  const ai=S.allLists.findIndex(l=>l.id===listId);
-  if(ai>=0)S.allLists[ai]=listObj;else S.allLists.push(listObj);
-  const mi=S.myLists.findIndex(l=>l.id===listId);
-  if(mi>=0)S.myLists[mi]=listObj;else S.myLists.push(listObj);
+  var ai=S.allLists.findIndex(function(l){return l.id===listId;});
+  if(ai>=0) S.allLists[ai]=listObj; else S.allLists.push(listObj);
+  var mi=S.myLists.findIndex(function(l){return l.id===listId;});
+  if(mi>=0) S.myLists[mi]=listObj; else S.myLists.push(listObj);
   S.activeListId=listId;
   saveMyListsLocal();
-  const tag=id('current-list-tag');tag.textContent=name;tag.style.display='';
-  closeSaveModal();renderSavedLists();
-  await pushListToJSONBin();
+  var tag=$('list-tag'); tag.textContent=name; tag.style.display='';
+  closeModal('save-modal'); renderSavedLists();
+  await pushToJSONBin();
 }
 
-async function pushListToJSONBin(){
-  if(!navigator.onLine){markPendingWrite();toast('Saved locally — will sync when reconnected');return;}
-  if(S.mode==='admin'){await saveBin();toast('List saved & synced');return;}
-  setSyncStatus('loading','Saving...');
-  try{
-    const getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
-    if(!getRes.ok)throw new Error('HTTP '+getRes.status);
-    const data=await getRes.json();
-    const rec=data.record||data;
-    const otherLists=(rec.teamLists||[]).filter(l=>l.owner!==S.userName);
-    const merged=[...otherLists,...S.myLists.map(l=>({...l}))];
-    const putRes=await fetch(JSONBIN+'/b/'+S.binId,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...rec,teamLists:merged,updatedAt:Date.now()})
-    });
-    if(!putRes.ok)throw new Error('HTTP '+putRes.status);
-    setSyncStatus('ok','Synced');
-    clearPendingWrite();
-    toast('List saved & synced');
-  }catch(e){
-    setSyncStatus('error','Sync failed');
-    markPendingWrite();
-    toast('Saved locally — will retry when reconnected');
-  }
-}
-
-function confirmNewList(){clearList();}
-
-// ── Gear item modal (admin only) ──────────────────────────────────────────
-function openItemModal(editId){
-  if(S.mode!=='admin')return;
-  S.editingId=editId;
-  const item=editId?S.catalogue.find(i=>i.id===editId):null;
-  id('item-modal-title').textContent=editId?'Edit gear item':'Add gear item';
-  id('item-modal-sub').style.display=editId?'none':'';
-  id('m-name').value=item?item.name:'';
-  id('m-loc').innerHTML=S.locations.map(l=>`<option value="${esc(l)}"${item&&item.location===l?' selected':''}>${esc(l)}</option>`).join('');
-  id('m-cat').innerHTML=['(none)',...S.categories].map(c=>`<option value="${esc(c)}"${item&&item.category===c?' selected':''}>${esc(c)}</option>`).join('');
-  id('m-qty').value=item?(item.qty||1):1;
-  id('m-subs').value=item?(item.subitems||[]).join('\n'):'';
-  id('item-delete-btn').style.display=editId?'':'none';
-  id('item-dupe-btn').style.display=editId?'':'none';
-  id('item-modal').style.display='flex';
-  setTimeout(()=>id('m-name').focus(),50);
-}
-function closeItemModal(){id('item-modal').style.display='none';S.editingId=null;}
-async function saveItem(){
-  if(S.mode!=='admin'){toast('Admin only');return;}
-  const name=id('m-name').value.trim();if(!name){toast('Enter a name');return;}
-  const location=id('m-loc').value;
-  const category=id('m-cat').value;
-  const qty=Math.max(1,parseInt(id('m-qty').value)||1);
-  const subitems=id('m-subs').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  if(S.editingId){
-    const i=S.catalogue.findIndex(x=>x.id===S.editingId);
-    if(i>=0)S.catalogue[i]={...S.catalogue[i],name,location,category,qty,subitems};
-    const pi=S.packList.findIndex(x=>x.id===S.editingId);
-    if(pi>=0)S.packList[pi]={...S.packList[pi],name,location,category,qty,subitems};
-  }else{S.catalogue.push({id:S.nextId++,name,location,category,qty,subitems});}
-  closeItemModal();renderCatalogue();renderList();await saveBin();
-}
-async function deleteCurrentItem(){
-  if(S.mode!=='admin'||!S.editingId)return;
-  S.catalogue=S.catalogue.filter(i=>i.id!==S.editingId);
-  S.packList=S.packList.filter(i=>i.id!==S.editingId);
-  closeItemModal();renderCatalogue();renderList();await saveBin();
-}
-async function dupeCurrentItem(){
-  if(S.mode!=='admin'||!S.editingId)return;
-  const src=S.catalogue.find(i=>i.id===S.editingId);if(!src)return;
-  const duped={...src,id:S.nextId++,name:'Copy of '+src.name};
-  S.catalogue.push(duped);
-  closeItemModal();renderCatalogue();await saveBin();toast('Item duplicated');
-}
-
-// ── Location manager ──────────────────────────────────────────────────────
-function openLocModal(){
-  S._pendingLocs=[...S.locations];renderLocEdit();
-  id('new-loc-input').value='';id('loc-modal').style.display='flex';
-  setTimeout(()=>id('new-loc-input').focus(),50);
-}
-function closeLocModal(){id('loc-modal').style.display='none';}
-function renderLocEdit(){
-  id('loc-edit-list').innerHTML=S._pendingLocs.map((loc,i)=>`
-    <div class="loc-edit-row">
-      <input type="text" value="${esc(loc)}" oninput="S._pendingLocs[${i}]=this.value" />
-      <button class="loc-del-btn" onclick="delPendingLoc(${i})">✕</button>
-    </div>`).join('');
-}
-function delPendingLoc(i){if(S._pendingLocs.length<=1){toast('Need at least one location');return;}S._pendingLocs.splice(i,1);renderLocEdit();}
-function addLocation(){const n=id('new-loc-input').value.trim();if(!n)return;S._pendingLocs.push(n);id('new-loc-input').value='';renderLocEdit();}
-async function saveLocations(){
-  const inputs=id('loc-edit-list').querySelectorAll('input');
-  const newLocs=Array.from(inputs).map(inp=>inp.value.trim()).filter(Boolean);
-  if(!newLocs.length){toast('Need at least one location');return;}
-  const old=S.locations;
-  function remap(item){const i=old.indexOf(item.location);return{...item,location:i>=0&&newLocs[i]?newLocs[i]:newLocs[0]};}
-  S.catalogue=S.catalogue.map(remap);S.packList=S.packList.map(remap);
-  S.locations=newLocs;
-  if(S.locFilter!=='all'&&!newLocs.includes(S.locFilter))S.locFilter='all';
-  closeLocModal();renderFilters();renderCatalogue();renderList();
+async function toggleApprove(listId,e){
+  if(e) e.stopPropagation();
+  if(S.mode!=='admin'){ toast('Only admin can approve lists'); return; }
+  var lst=S.allLists.find(function(l){return l.id===listId;})||S.myLists.find(function(l){return l.id===listId;});
+  if(!lst) return;
+  lst.approved=!lst.approved; lst.approvedAt=lst.approved?Date.now():null;
+  var mi=S.myLists.findIndex(function(l){return l.id===listId;});
+  if(mi>=0){ S.myLists[mi].approved=lst.approved; S.myLists[mi].approvedAt=lst.approvedAt; }
+  saveMyListsLocal(); renderSavedLists(); renderCatalogue();
   await saveBin();
-  toast('Locations updated — team members will see changes within 15 seconds');
+  toast(lst.approved?'List approved':'Approval removed');
 }
 
-// ── Category manager ──────────────────────────────────────────────────────
-function openCatModal(){
-  renderCatTags();id('new-cat-input').value='';id('cat-modal').style.display='flex';
-  setTimeout(()=>id('new-cat-input').focus(),50);
+function openModal(id){ $(id).style.display='flex'; if(id==='loc-modal'){ S._pendingLocs=S.locations.slice(); renderLocEdit(); $('new-loc-input').value=''; } if(id==='cat-modal') renderCatTags(); if(id==='share-modal') $('share-bin-id').value=S.binId; }
+function closeModal(id){ $(id).style.display='none'; }
+
+function openItemModal(editId){
+  if(S.mode!=='admin') return;
+  S.editingId=editId;
+  var item=editId?S.catalogue.find(function(i){return i.id===editId;}):null;
+  $('item-modal-title').textContent=editId?'Edit gear item':'Add gear item';
+  $('m-name').value=item?item.name:'';
+  $('m-loc').innerHTML=S.locations.map(function(l){return '<option value="'+esc(l)+'"'+(item&&item.location===l?' selected':'')+'>'+esc(l)+'</option>';}).join('');
+  $('m-cat').innerHTML=['(none)'].concat(S.categories).map(function(c){return '<option value="'+esc(c)+'"'+(item&&item.category===c?' selected':'')+'>'+esc(c)+'</option>';}).join('');
+  $('m-qty').value=item?(item.qty||1):1;
+  $('m-subs').value=item?(item.subitems||[]).join('\n'):'';
+  $('item-del-btn').style.display=editId?'':'none';
+  $('item-dupe-btn').style.display=editId?'':'none';
+  openModal('item-modal');
+  setTimeout(function(){$('m-name').focus();},50);
 }
-function closeCatModal(){id('cat-modal').style.display='none';}
+function closeItemModal(){ closeModal('item-modal'); S.editingId=null; }
+async function saveItem(){
+  if(S.mode!=='admin'){ toast('Admin only'); return; }
+  var name=$('m-name').value.trim(); if(!name){ toast('Enter a name'); return; }
+  var location=$('m-loc').value;
+  var category=$('m-cat').value;
+  var qty=Math.max(1,parseInt($('m-qty').value)||1);
+  var subitems=$('m-subs').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  if(S.editingId){
+    var i=S.catalogue.findIndex(function(x){return x.id===S.editingId;});
+    if(i>=0) S.catalogue[i]=Object.assign({},S.catalogue[i],{name:name,location:location,category:category,qty:qty,subitems:subitems});
+    var pi=S.packList.findIndex(function(x){return x.id===S.editingId;});
+    if(pi>=0) S.packList[pi]=Object.assign({},S.packList[pi],{name:name,location:location,category:category,qty:qty,subitems:subitems});
+  } else {
+    S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems});
+  }
+  closeItemModal(); renderCatalogue(); renderList(); await saveBin();
+}
+async function deleteItem(){
+  if(S.mode!=='admin'||!S.editingId) return;
+  S.catalogue=S.catalogue.filter(function(i){return i.id!==S.editingId;});
+  S.packList=S.packList.filter(function(i){return i.id!==S.editingId;});
+  closeItemModal(); renderCatalogue(); renderList(); await saveBin();
+}
+async function dupeItem(){
+  if(S.mode!=='admin'||!S.editingId) return;
+  var src=S.catalogue.find(function(i){return i.id===S.editingId;}); if(!src) return;
+  S.catalogue.push(Object.assign({},src,{id:S.nextId++,name:'Copy of '+src.name}));
+  closeItemModal(); renderCatalogue(); await saveBin(); toast('Item duplicated');
+}
+
+function renderLocEdit(){
+  $('loc-edit-list').innerHTML=S._pendingLocs.map(function(loc,i){
+    return '<div class="loc-edit-row"><input type="text" value="'+esc(loc)+'" oninput="S._pendingLocs['+i+']=this.value" /><button class="loc-del-btn" onclick="delPendingLoc('+i+')">x</button></div>';
+  }).join('');
+}
+function delPendingLoc(i){ if(S._pendingLocs.length<=1){ toast('Need at least one location'); return; } S._pendingLocs.splice(i,1); renderLocEdit(); }
+function addLocation(){ var n=$('new-loc-input').value.trim(); if(!n) return; S._pendingLocs.push(n); $('new-loc-input').value=''; renderLocEdit(); }
+async function saveLocations(){
+  var inputs=$('loc-edit-list').querySelectorAll('input');
+  var newLocs=Array.from(inputs).map(function(inp){return inp.value.trim();}).filter(Boolean);
+  if(!newLocs.length){ toast('Need at least one location'); return; }
+  var old=S.locations;
+  function remap(item){ var i=old.indexOf(item.location); return Object.assign({},item,{location:i>=0&&newLocs[i]?newLocs[i]:newLocs[0]}); }
+  S.catalogue=S.catalogue.map(remap); S.packList=S.packList.map(remap);
+  S.locations=newLocs;
+  if(S.locFilter!=='all'&&!newLocs.includes(S.locFilter)) S.locFilter='all';
+  closeModal('loc-modal'); renderFilters(); renderCatalogue(); renderList();
+  await saveBin(); toast('Locations updated - team members sync within 15s');
+}
+
 function renderCatTags(){
-  id('cat-tag-list').innerHTML=S.categories.map(cat=>`
-    <div class="cat-tag">${esc(cat)}
-      <button onclick="deleteCategory(${JSON.stringify(cat)})" title="Remove">✕</button>
-    </div>`).join('');
+  $('cat-tag-list').innerHTML=S.categories.map(function(cat){
+    return '<div class="cat-tag">'+esc(cat)+'<button onclick="deleteCategory(\''+esc(cat)+'\')">x</button></div>';
+  }).join('');
 }
 async function addCategory(){
-  const n=id('new-cat-input').value.trim();
-  if(!n||S.categories.includes(n))return;
-  S.categories.push(n);id('new-cat-input').value='';
-  renderCatTags();renderFilters();renderCatalogue();
-  await saveBin();
-  toast('Category added — team members will see changes within 15 seconds');
+  var n=$('new-cat-input').value.trim();
+  if(!n||S.categories.includes(n)) return;
+  S.categories.push(n); $('new-cat-input').value='';
+  renderCatTags(); renderFilters(); renderCatalogue(); await saveBin(); toast('Category added');
 }
 async function deleteCategory(cat){
-  S.categories=S.categories.filter(c=>c!==cat);
-  S.catalogue=S.catalogue.map(i=>i.category===cat?{...i,category:'(none)'}:i);
-  if(S.catFilter===cat)S.catFilter='all';
-  renderCatTags();renderFilters();renderCatalogue();
-  await saveBin();
-  toast('Category removed — team members will see changes within 15 seconds');
+  S.categories=S.categories.filter(function(c){return c!==cat;});
+  S.catalogue=S.catalogue.map(function(i){return i.category===cat?Object.assign({},i,{category:'(none)'}):i;});
+  if(S.catFilter===cat) S.catFilter='all';
+  renderCatTags(); renderFilters(); renderCatalogue(); await saveBin(); toast('Category removed');
 }
 
-// ── CSV import/export ─────────────────────────────────────────────────────
 function exportCSV(){
-  const header='name,location,category,qty,subitems';
-  const rows=S.catalogue.map(item=>[
-    `"${(item.name||'').replace(/"/g,'""')}"`,
-    `"${(item.location||'').replace(/"/g,'""')}"`,
-    `"${(item.category||'').replace(/"/g,'""')}"`,
-    item.qty||1,
-    `"${(item.subitems||[]).join(';').replace(/"/g,'""')}"`
-  ].join(','));
-  const csv=[header,...rows].join('\n');
-  const blob=new Blob([csv],{type:'text/csv'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='nen_catalogue.csv';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  var header='name,location,category,qty,subitems';
+  var rows=S.catalogue.map(function(item){
+    return ['"'+(item.name||'').replace(/"/g,'""')+'"','"'+(item.location||'').replace(/"/g,'""')+'"','"'+(item.category||'').replace(/"/g,'""')+'"',item.qty||1,'"'+(item.subitems||[]).join(';').replace(/"/g,'""')+'"'].join(',');
+  });
+  var csv=[header].concat(rows).join('\n');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='nen_catalogue.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   toast('CSV exported');
 }
-function openCSVImport(){id('csv-input').value='';id('csv-modal').style.display='flex';}
-function closeCSVImport(){id('csv-modal').style.display='none';}
 async function importCSV(){
-  const raw=id('csv-input').value.trim();
-  if(!raw){toast('Paste some CSV data first');return;}
-  const lines=raw.split('\n').slice(1);// skip header
-  let added=0;
-  lines.forEach(line=>{
-    if(!line.trim())return;
-    // simple CSV parse (handles quoted fields)
-    const cols=[];let cur='',inQ=false;
-    for(let ci=0;ci<line.length;ci++){const ch=line[ci];if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){cols.push(cur.trim());cur='';}else{cur+=ch;}}
+  var raw=$('csv-input').value.trim(); if(!raw){ toast('Paste CSV data first'); return; }
+  var lines=raw.split('\n').slice(1); var added=0;
+  lines.forEach(function(line){
+    if(!line.trim()) return;
+    var cols=[]; var cur=''; var inQ=false;
+    for(var ci=0;ci<line.length;ci++){ var ch=line[ci]; if(ch==='"'){inQ=!inQ;} else if(ch===','&&!inQ){cols.push(cur.trim());cur='';} else{cur+=ch;} }
     cols.push(cur.trim());
-    const [name,location,category,qty,subsRaw]=cols.map(c=>c.replace(/^"|"$/g,'').replace(/""/g,'"'));
-    if(!name)return;
-    const loc=S.locations.includes(location)?location:S.locations[0];
-    const cat=S.categories.includes(category)?category:'(none)';
-    const subitems=subsRaw?subsRaw.split(';').map(s=>s.trim()).filter(Boolean):[];
-    if(S.catalogue.some(x=>x.name.toLowerCase()===name.toLowerCase()))return;// skip duplicate
-    S.catalogue.push({id:S.nextId++,name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems});
+    var name=cols[0]&&cols[0].replace(/^"|"$/g,'').replace(/""/g,'"');
+    var location=cols[1]&&cols[1].replace(/^"|"$/g,'').replace(/""/g,'"');
+    var category=cols[2]&&cols[2].replace(/^"|"$/g,'').replace(/""/g,'"');
+    var qty=cols[3];
+    var subsRaw=cols[4]&&cols[4].replace(/^"|"$/g,'').replace(/""/g,'"');
+    if(!name) return;
+    if(S.catalogue.some(function(x){return x.name.toLowerCase()===name.toLowerCase();})) return;
+    var loc=S.locations.includes(location)?location:S.locations[0];
+    var cat=S.categories.includes(category)?category:'(none)';
+    var subitems=subsRaw?subsRaw.split(';').map(function(s){return s.trim();}).filter(Boolean):[];
+    S.catalogue.push({id:S.nextId++,name:name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems:subitems});
     added++;
   });
-  closeCSVImport();renderCatalogue();await saveBin();toast(`Imported ${added} item${added!==1?'s':''}`);
+  closeModal('csv-modal'); renderCatalogue(); await saveBin();
+  toast('Imported '+added+' item'+(added!==1?'s':''));
 }
 
-// ── Request items ─────────────────────────────────────────────────────────
-function openRequestModal(){id('req-name').value='';id('req-notes').value='';id('request-modal').style.display='flex';setTimeout(()=>id('req-name').focus(),50);}
-function closeRequestModal(){id('request-modal').style.display='none';}
 async function submitRequest(){
-  const name=id('req-name').value.trim();if(!name){toast('Enter an item name');return;}
-  const req={id:'req_'+Date.now(),requester:S.userName,name,notes:id('req-notes').value.trim(),requestedAt:Date.now(),status:'pending'};
+  var name=$('req-name').value.trim(); if(!name){ toast('Enter an item name'); return; }
+  var req={id:'req_'+Date.now(),requester:S.userName,name:name,notes:$('req-notes').value.trim(),requestedAt:Date.now(),status:'pending'};
   S.requests.push(req);
-  closeRequestModal();
-  if(S.mode==='admin'){
-    await saveBin();
-    toast('Request added');
-  } else {
-    // Viewers push via read-merge-write (same pattern as list save)
-    setSyncStatus('loading','Sending request...');
-    try{
-      const getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
-      const data=await getRes.json();
-      const rec=data.record||data;
-      const merged=[...(rec.requests||[]).filter(r=>r.id!==req.id),req];
-      await fetch(JSONBIN+'/b/'+S.binId,{
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({...rec,requests:merged,updatedAt:Date.now()})
-      });
-      setSyncStatus('ok','Synced');
-      toast('Request sent to admin');
-    }catch(e){
-      setSyncStatus('error','Sync failed');
-      toast('Request saved locally — will sync when reconnected');
-    }
-  }
+  closeModal('request-modal');
+  await pushToJSONBin();
+  toast('Request sent to admin');
 }
 function renderAdminRequests(){
-  if(S.mode!=='admin')return;
-  const pending=S.requests.filter(r=>r.status==='pending');
-  const wrap=id('request-items-admin-wrap');
-  if(!pending.length){wrap.innerHTML='';return;}
-  wrap.innerHTML=`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
-    <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">Item requests (${pending.length})</div>
-    ${pending.map(r=>`<div class="request-item-row">
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:600">${esc(r.name)}</div>
-        <div style="font-size:10px;color:var(--text3)">${esc(r.requester)}${r.notes?' — '+esc(r.notes):''}</div>
-      </div>
-      <span class="request-badge">Pending</span>
-      <button class="icon-btn" onclick="dismissRequest('${r.id}')" title="Dismiss">✕</button>
-      <button class="icon-btn" onclick="addFromRequest('${r.id}')" title="Add to catalogue" style="color:var(--green)">+</button>
-    </div>`).join('')}
-  </div>`;
+  if(S.mode!=='admin') return;
+  var pending=S.requests.filter(function(r){return r.status==='pending';});
+  var wrap=$('req-admin-wrap'); if(!wrap) return;
+  if(!pending.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:5px">Requests ('+pending.length+')</div>'
+    +pending.map(function(r){
+      return '<div class="req-row">'
+        +'<div style="flex:1"><div style="font-size:12px;font-weight:600">'+esc(r.name)+'</div>'
+        +'<div style="font-size:10px;color:var(--text3)">'+esc(r.requester)+(r.notes?' - '+esc(r.notes):'')+'</div></div>'
+        +'<span class="req-badge">Pending</span>'
+        +'<button class="admin-icon-btn" onclick="dismissRequest(\''+r.id+'\')" title="Dismiss">x</button>'
+        +'<button class="admin-icon-btn" onclick="addFromRequest(\''+r.id+'\')" title="Add to catalogue" style="color:var(--green)">+</button>'
+        +'</div>';
+    }).join('')+'</div>';
 }
-async function dismissRequest(reqId){S.requests=S.requests.map(r=>r.id===reqId?{...r,status:'dismissed'}:r);await saveBin();renderAdminRequests();}
+async function dismissRequest(reqId){ S.requests=S.requests.map(function(r){return r.id===reqId?Object.assign({},r,{status:'dismissed'}):r;}); await saveBin(); renderAdminRequests(); }
 async function addFromRequest(reqId){
-  const req=S.requests.find(r=>r.id===reqId);if(!req)return;
-  S.requests=S.requests.map(r=>r.id===reqId?{...r,status:'added'}:r);
-  openItemModal(null);setTimeout(()=>{id('m-name').value=req.name;},60);
-  await saveBin();renderAdminRequests();
+  var req=S.requests.find(function(r){return r.id===reqId;}); if(!req) return;
+  S.requests=S.requests.map(function(r){return r.id===reqId?Object.assign({},r,{status:'added'}):r;});
+  await saveBin(); renderAdminRequests();
+  openItemModal(null); setTimeout(function(){$('m-name').value=req.name;},60);
 }
 
-// ── Export / PDF ──────────────────────────────────────────────────────────
+function copyBinId(){ navigator.clipboard.writeText(S.binId).then(function(){toast('Bin ID copied!');}).catch(function(){toast('Select and copy manually');}); }
+
 function openExportModal(){
-  if(!S.packList.length){toast('Add some gear first');return;}
-  id('ex-name').value=id('shoot-name').value||'';
-  id('ex-date').value=id('shoot-date').value||new Date().toISOString().slice(0,10);
+  if(!S.packList.length){ toast('Add some gear first'); return; }
+  $('ex-name').value=$('shoot-name').value||'';
+  $('ex-date').value=$('shoot-date').value||new Date().toISOString().slice(0,10);
   S.exportFilter='all';
-  const locsInList=[...new Set(S.packList.map(i=>i.location))];
-  let btns=`<button class="export-loc-opt active" onclick="setExportFilter('all',this)">Complete kit</button>`;
-  locsInList.forEach(loc=>{
-    const c=pal(loc);
-    btns+=`<button class="export-loc-opt" onclick="setExportFilter(${JSON.stringify(loc)},this)" style="border-color:${c.bg}">${esc(loc)}</button>`;
-  });
-  id('export-loc-btns').innerHTML=btns;
-  id('export-modal').style.display='flex';
-  setTimeout(()=>id('ex-name').focus(),50);
+  var locsInList=[];
+  S.packList.forEach(function(i){ if(locsInList.indexOf(i.location)<0) locsInList.push(i.location); });
+  var btns='<button class="export-loc-opt active" data-loc="all">Complete kit</button>';
+  locsInList.forEach(function(loc){ btns+='<button class="export-loc-opt" data-loc="'+esc(loc)+'">'+esc(loc)+'</button>'; });
+  $('export-loc-btns').innerHTML=btns;
+  $('export-loc-btns').onclick=function(e){
+    var b=e.target.closest('[data-loc]'); if(!b) return;
+    S.exportFilter=b.dataset.loc;
+    $('export-loc-btns').querySelectorAll('[data-loc]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.loc===S.exportFilter);});
+  };
+  openModal('export-modal');
+  setTimeout(function(){$('ex-name').focus();},50);
 }
-function setExportFilter(f,btn){S.exportFilter=f;document.querySelectorAll('.export-loc-opt').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-function closeExportModal(){id('export-modal').style.display='none';}
 
 function pdfFilename(shootName,rawDate,locLabel){
-  let datePart='000000';
-  if(rawDate){const p=rawDate.split('-');if(p.length===3)datePart=p[0].slice(2)+p[1]+p[2];}
-  const namePart=(shootName||'Gear List').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-  const locPart=locLabel==='Complete kit'?'':('_'+locLabel.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,''));
-  return`${datePart}_${namePart}${locPart}.pdf`;
+  var datePart='000000';
+  if(rawDate){ var p=rawDate.split('-'); if(p.length===3) datePart=p[0].slice(2)+p[1]+p[2]; }
+  var namePart=(shootName||'Gear List').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  var locPart=locLabel==='Complete kit'?'':('_'+locLabel.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,''));
+  return datePart+'_'+namePart+locPart+'.pdf';
 }
 
 function runExport(){
-  const shootName=id('ex-name').value.trim()||'Shoot Pack List';
-  const rawDate=id('ex-date').value;
-  if(!id('shoot-name').value.trim())id('shoot-name').value=shootName;
-  if(!id('shoot-date').value)id('shoot-date').value=rawDate;
-  const shootDate=rawDate?new Date(rawDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  const filter=S.exportFilter;
-  const items=filter==='all'?[...S.packList]:S.packList.filter(i=>i.location===filter);
-  if(!items.length){toast('No items for that location');return;}
-  const locLabel=filter==='all'?'Complete kit':filter;
-  const byLoc={};
-  items.forEach(item=>{if(!byLoc[item.location])byLoc[item.location]=[];byLoc[item.location].push(item);});
-  closeExportModal();
-  generatePDF(shootName,shootDate,rawDate,locLabel,byLoc,filter);
+  var shootName=$('ex-name').value.trim()||'Shoot Pack List';
+  var rawDate=$('ex-date').value;
+  if(!$('shoot-name').value.trim()) $('shoot-name').value=shootName;
+  if(!$('shoot-date').value) $('shoot-date').value=rawDate;
+  var shootDate=rawDate?new Date(rawDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  var filter=S.exportFilter;
+  var items=filter==='all'?S.packList.slice():S.packList.filter(function(i){return i.location===filter;});
+  if(!items.length){ toast('No items for that location'); return; }
+  var locLabel=filter==='all'?'Complete kit':filter;
+  closeModal('export-modal');
+  generatePDF(shootName,shootDate,rawDate,locLabel,items,filter);
 }
 
-function generatePDF(shootName,shootDate,rawDate,locLabel,byLoc,filter){
-  // Lazy-load jsPDF only when needed
+function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
   if(!window.jspdf){
-    toast('Loading PDF library…');
-    const s=document.createElement('script');
+    toast('Loading PDF library...');
+    var s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s.onload=()=>generatePDF(shootName,shootDate,rawDate,locLabel,byLoc,filter);
-    s.onerror=()=>toast('Could not load PDF library — check your internet connection');
-    document.head.appendChild(s);
-    return;
+    s.onload=function(){generatePDF(shootName,shootDate,rawDate,locLabel,items,filter);};
+    s.onerror=function(){toast('Could not load PDF library - check internet connection');};
+    document.head.appendChild(s); return;
   }
-  const {jsPDF}=window.jspdf;
-  if(!jsPDF){toast('PDF library not loaded');return;}
-  const doc=new jsPDF({unit:'mm',format:'a4'});
-  const PW=210,PH=297,ML=14,MR=14,usableW=PW-ML-MR;
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({unit:'mm',format:'a4'});
+  var PW=210,PH=297,ML=14,MR=14,usableW=PW-ML-MR;
 
-  // Header
-  doc.setFillColor(26,25,23);doc.rect(0,0,PW,30,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);
+  doc.setFillColor(26,25,23); doc.rect(0,0,PW,34,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
   doc.text(shootName.toUpperCase(),ML,13);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(170,168,162);
-  const createdBy=S.userName&&S.userName!=='Admin'?S.userName:'';
-  const metaParts=[shootDate,'Location: '+locLabel];
-  if(createdBy)metaParts.push('Prepared by: '+createdBy);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(165,163,155);
+  var createdBy=S.userName&&S.userName!=='Admin'?S.userName:'';
+  var metaParts=[shootDate,'Location: '+locLabel];
+  if(createdBy) metaParts.push('Prepared by: '+createdBy);
   doc.text(metaParts.join('   |   '),ML,20);
-  doc.setFontSize(7);doc.setTextColor(120,118,112);
-  doc.text('NEN GEAR LIST GENERATOR',ML,26);
+  var now=new Date();
+  var mm=String(now.getMonth()+1).padStart(2,'0');
+  var dd=String(now.getDate()).padStart(2,'0');
+  var yy=String(now.getFullYear()).slice(2);
+  var hh=String(now.getHours()).padStart(2,'0');
+  var min=String(now.getMinutes()).padStart(2,'0');
+  doc.setFontSize(7); doc.setTextColor(115,112,105);
+  doc.text('NEN GEAR LIST GENERATOR   |   Created: '+mm+'/'+dd+'/'+yy+' '+hh+':'+min,ML,27);
 
-  let y=40;
-  const pageBottom=PH-14;
+  var y=44;
+  var pageBottom=PH-14;
+  function checkPage(needed){ if(y+needed>pageBottom){ doc.addPage(); y=18; } }
 
-  function checkPage(needed){if(y+needed>pageBottom){doc.addPage();y=18;}}
+  var byLoc={};
+  items.forEach(function(item){
+    if(!byLoc[item.location]) byLoc[item.location]={};
+    var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
+    if(!byLoc[item.location][cat]) byLoc[item.location][cat]=[];
+    byLoc[item.location][cat].push(item);
+  });
 
-  Object.entries(byLoc).forEach(([loc,locItems])=>{
-    // Location header
+  Object.keys(byLoc).forEach(function(loc){
+    var catGroups=byLoc[loc];
     if(filter==='all'){
-      checkPage(10);
-      doc.setFillColor(240,239,234);doc.rect(ML,y-5,usableW,8,'F');
-      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(90,88,82);
-      doc.text(loc.toUpperCase(),ML+3,y);
-      y+=9;
+      checkPage(12);
+      doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,9,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(200,198,192);
+      doc.text(loc.toUpperCase(),ML+3,y); y+=11;
     }
-
-    locItems.forEach(item=>{
-      const subCount=(item.subitems||[]).length;
-      const note=item.note&&item.note.trim();
-      const noteLines=note?doc.splitTextToSize('Note: '+note,usableW-10):[];
-      const needed=8+(subCount>0?subCount*4.5+2:0)+(noteLines.length>0?noteLines.length*4+2:0)+2;
-      checkPage(needed);
-
-      // Checkbox — draw a clean square
-      doc.setDrawColor(160,158,152);doc.setLineWidth(0.5);
-      doc.rect(ML,y-4.5,4.5,4.5);
-
-      // Item name
-      doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(26,25,23);
-      doc.text(item.name,ML+7,y-0.5);
-      y+=5.5;
-
-      // Sub-items
-      if(subCount>0){
-        doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(120,118,112);
-        (item.subitems||[]).forEach(sub=>{
-          checkPage(4.5);
-          doc.text('  -  '+sub,ML+7,y);y+=4.5;
-        });
-        y+=1;
-      }
-
-      // Note
-      if(noteLines.length>0){
-        doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(140,138,132);
-        noteLines.forEach(line=>{checkPage(4);doc.text(line,ML+7,y);y+=4;});
-        y+=1;
-      }
-
-      y+=3;// spacing between items, no line
+    Object.keys(catGroups).forEach(function(cat){
+      var catItems=catGroups[cat];
+      checkPage(9);
+      doc.setFillColor(238,237,232); doc.rect(ML,y-4,usableW,7,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(95,93,88);
+      doc.text(cat.toUpperCase(),ML+3,y); y+=9;
+      catItems.forEach(function(item){
+        var subCount=(item.subitems||[]).length;
+        var note=item.note&&item.note.trim();
+        var noteLines=note?doc.splitTextToSize(note,usableW-12):[];
+        var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+4;
+        checkPage(needed);
+        doc.setDrawColor(150,148,140); doc.setLineWidth(0.45);
+        doc.rect(ML,y-4,4,4);
+        var qtyNeeded=item.qtyNeeded||1;
+        var itemLabel=(qtyNeeded>1?qtyNeeded+'x  ':'')+item.name;
+        doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(26,25,23);
+        doc.text(itemLabel,ML+6,y-0.5); y+=5;
+        if(subCount>0){
+          doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(115,112,105);
+          (item.subitems||[]).forEach(function(sub){ checkPage(4); doc.text('  -  '+sub,ML+6,y); y+=4; });
+          y+=1;
+        }
+        if(noteLines.length>0){
+          doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
+          noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6,y); y+=4; });
+          y+=1;
+        }
+        y+=3;
+      });
+      y+=2;
     });
     y+=4;
   });
 
-  // Footer
-  const pageCount=doc.getNumberOfPages();
-  for(let p=1;p<=pageCount;p++){
+  var pageCount=doc.getNumberOfPages();
+  for(var p=1;p<=pageCount;p++){
     doc.setPage(p);
-    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(180,178,172);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(175,173,165);
     doc.text('NEN Gear List Generator',ML,PH-6);
-    doc.text(`${p} / ${pageCount}`,PW-MR,PH-6,{align:'right'});
+    doc.text(p+' / '+pageCount,PW-MR,PH-6,{align:'right'});
   }
   doc.save(pdfFilename(shootName,rawDate,locLabel));
   toast('PDF downloaded');
 }
 
-// ── Share ─────────────────────────────────────────────────────────────────
-function showShareModal(){id('share-bin-id').value=S.binId;id('share-modal').style.display='flex';}
-function closeShareModal(){id('share-modal').style.display='none';}
-function copyBinId(){navigator.clipboard.writeText(S.binId).then(()=>toast('Bin ID copied!')).catch(()=>toast('Select and copy manually'));}
-
-// ── Init ──────────────────────────────────────────────────────────────────
-// Purge any corrupted 'undefined' / 'null' strings that may have been stored
-['nen2_binId','nen2_mode','nen2_apiKey','nen2_userName'].forEach(k=>{
-  const v=localStorage.getItem(k);
-  if(v==='undefined'||v==='null')localStorage.removeItem(k);
+// ── Init ──
+['nen3_binId','nen3_mode','nen3_apiKey','nen3_userName'].forEach(function(k){
+  var v=localStorage.getItem(k);
+  if(v==='undefined'||v==='null') localStorage.removeItem(k);
 });
 loadLocal();
-// Secondary guard: if binId loaded as bad value, clear it
-if(S.binId==='undefined'||S.binId==='null'||S.binId===''){
-  S.binId='';
-  localStorage.removeItem('nen2_binId');
-}
-if(S.binId){
+if(S.binId&&S.binId!=='undefined'){
   if(S.mode==='admin'){
-    id('admin-key').value=S.apiKey;
-    id('bin-id-field').style.display='';
-    id('bin-id-input').value=S.binId;
+    $('admin-key').value=S.apiKey;
+    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
     setMode('admin');
   } else {
-    id('viewer-name').value=S.userName;
-    id('viewer-bin-id').value=S.binId;
+    $('viewer-name').value=S.userName; $('viewer-bin-id').value=S.binId;
     setMode('viewer');
   }
 }
-if(!navigator.onLine)setOnlineStatus(false);
-if(S.binId&&hasPendingWrite()){
-  id('offline-banner').style.display='flex';
-  id('offline-banner').textContent='Unsynced changes from last session — syncing now…';
-}
-
+if(!navigator.onLine) setOnline(false);
 </script>
 </body>
 </html>
