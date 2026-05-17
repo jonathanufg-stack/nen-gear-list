@@ -207,7 +207,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
 <div id="setup-screen">
   <div class="setup-card">
-    <h1>NEN Gear List Generator <span style="font-weight:400;opacity:.5;font-size:10px;letter-spacing:.02em" id="version-tag"></span></h1>
+    <h1>NEN Gear List Generator</h1>
     <p class="sub">Shared gear catalogue and shoot pack list tool for the NEN team.</p>
     <div class="mode-toggle">
       <button class="mode-btn active" id="mode-admin-btn" onclick="setMode('admin')">&#128273; Admin</button>
@@ -1337,10 +1337,12 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
 
   Object.keys(byLoc).forEach(function(loc){
     var catGroups=byLoc[loc];
-    checkPage(12);
-    doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,9,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(200,198,192);
-    doc.text(loc.toUpperCase(),ML+3,y); y+=11;
+    if(filter==='all'){
+      checkPage(12);
+      doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,9,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(200,198,192);
+      doc.text(loc.toUpperCase(),ML+3,y); y+=11;
+    }
     Object.keys(catGroups).forEach(function(cat){
       var catItems=catGroups[cat];
       checkPage(9);
