@@ -498,7 +498,7 @@ function pillHTML(loc){const p=pal(loc);return`<span class="loc-pill" style="bac
 function getAvailability(itemId, forDate){
   const catItem=S.catalogue.find(i=>i.id===itemId);
   const total=catItem?(catItem.qty||1):1;
-  if(!forDate)return{booked:0,total};
+  if(!forDate)return{booked:0,total,available:total};
   const activeDate=forDate.slice(0,10);
   let booked=0;
   S.allLists.forEach(lst=>{
@@ -635,8 +635,8 @@ async function launchApp(){
   // Apply cache immediately if available
   if(S.cachedBinData) applyBinData(S.cachedBinData);
   await syncAll();
-  // Auto-sync every 60s
-  S.autoSyncTimer=setInterval(()=>syncAll(true),60000);
+  // Auto-sync every 15s so location/category changes reach viewers quickly
+  S.autoSyncTimer=setInterval(()=>syncAll(true),15000);
 }
 
 // ── Sync ──────────────────────────────────────────────────────────────────
@@ -716,23 +716,30 @@ async function manualSync(){id('conflict-banner').style.display='none';await syn
 
 // ── Filters ───────────────────────────────────────────────────────────────
 function renderFilters(){
-  // Location filter
-  let lhtml=`<button class="filter-chip${S.locFilter==='all'?' active':''}" onclick="setLocFilter('all')">All</button>`;
+  // Location filter - use data-val attribute to avoid quote injection in onclick
+  let lhtml=`<button class="filter-chip${S.locFilter==='all'?' active':''}" data-loc="all">All</button>`;
   S.locations.forEach(loc=>{
-    const c=pal(loc);const active=S.locFilter===loc;
-    lhtml+=`<button class="filter-chip${active?' active':''}" onclick="setLocFilter(${JSON.stringify(loc)})" style="${active?'':''}">
-      <span style="display:inline-block;background:${c.bg};color:${c.fg};padding:0 4px;border-radius:8px;font-size:9px;font-weight:700">${esc(locShort(loc))}</span>
+    const p=pal(loc);const active=S.locFilter===loc;
+    lhtml+=`<button class="filter-chip${active?' active':''}" data-loc="${esc(loc)}">
+      <span style="display:inline-block;background:${p.bg};color:${p.fg};padding:0 4px;border-radius:8px;font-size:9px;font-weight:700">${esc(locShort(loc))}</span>
+      <span style="font-size:10px;margin-left:2px">${esc(loc)}</span>
     </button>`;
   });
   id('loc-filter-row').innerHTML=lhtml;
+  id('loc-filter-row').querySelectorAll('[data-loc]').forEach(btn=>{
+    btn.addEventListener('click',()=>setLocFilter(btn.dataset.loc));
+  });
 
   // Category filter
-  let chtml=`<button class="filter-chip${S.catFilter==='all'?' active':''}" onclick="setCatFilter('all')">All</button>`;
+  let chtml=`<button class="filter-chip${S.catFilter==='all'?' active':''}" data-cat="all">All</button>`;
   S.categories.forEach(cat=>{
     const active=S.catFilter===cat;
-    chtml+=`<button class="filter-chip${active?' active':''}" onclick="setCatFilter(${JSON.stringify(cat)})">${esc(cat)}</button>`;
+    chtml+=`<button class="filter-chip${active?' active':''}" data-cat="${esc(cat)}">${esc(cat)}</button>`;
   });
   id('cat-filter-row').innerHTML=chtml;
+  id('cat-filter-row').querySelectorAll('[data-cat]').forEach(btn=>{
+    btn.addEventListener('click',()=>setCatFilter(btn.dataset.cat));
+  });
 }
 function setLocFilter(f){S.locFilter=f;renderFilters();renderCatalogue();}
 function setCatFilter(f){S.catFilter=f;renderFilters();renderCatalogue();}
@@ -773,7 +780,7 @@ function renderCatalogue(){
 
     return`<div class="cat-item${inList?' in-list':''}${fullyBooked?' cat-item-unavail':''}">
       <div class="cat-item-top">
-        <span class="cat-name${isAdmin?' clickable':''}" ${isAdmin?`onclick="openItemModal(${item.id})" title="Edit"`:''}>${esc(item.name)}</span>
+        <span class="cat-name${isAdmin?' clickable':''}" data-editid="${isAdmin?item.id:-1}">${esc(item.name)}</span>
         <span class="loc-pill" style="background:${c.bg};color:${c.fg}">${esc(locShort(item.location))}</span>
         <div class="item-actions">
           ${isAdmin?`<button class="icon-btn" onclick="quickDeleteItem(${item.id},event)" title="Remove from catalogue" style="color:var(--text3)">&#128465;</button>`:''}
@@ -787,6 +794,15 @@ function renderCatalogue(){
       ${item.subitems&&item.subitems.length?`<div class="cat-subs">${item.subitems.map(s=>'· '+esc(s)).join('  ')}</div>`:''}
     </div>`;
   }).join('');
+
+  // Use onclick (replaces itself each render, no stacking)
+  list.onclick=function(e){
+    const editSpan=e.target.closest('[data-editid]');
+    if(editSpan&&S.mode==='admin'){
+      const eid=parseInt(editSpan.dataset.editid);
+      if(eid>0) openItemModal(eid);
+    }
+  };
 }
 
 async function quickDeleteItem(itemId,e){
@@ -822,8 +838,7 @@ function openQtyPicker(item){
   const shootDate=currentShootDate();
   const avail=getAvailability(item.id,shootDate);
   const max=shootDate?avail.available:item.qty;
-  const existing=S.allLists.find(l=>l.id===S.activeListId);
-  // Build modal content in share modal slot (reuse overlay)
+  // Build modal content dynamically
   const overlay=document.createElement('div');
   overlay.className='modal-overlay';
   overlay.id='qty-overlay';
@@ -879,7 +894,7 @@ function renderList(){
           ondragend="dragEnd(event)">
           <span class="drag-handle" title="Drag to reorder">⠿</span>
           <div class="list-row-info">
-            <div class="list-row-name">${esc(item.name)}${(item.qtyNeeded||1)>1?' <span style="font-size:10px;font-weight:400;color:var(--text3)">x'+item.qtyNeeded+'</span>':''}</div>
+            <div class="list-row-name">${esc(item.name)}${(item.qtyNeeded||1)>1?` <span style="font-size:10px;font-weight:400;color:var(--text3)">x${item.qtyNeeded}</span>`:''}</div>
             ${item.subitems&&item.subitems.length?`<div class="list-row-subs">${item.subitems.map(s=>'· '+esc(s)).join('  ')}</div>`:''}
             <div class="note-field">
               ${item.noteOpen?`<textarea class="note-input" rows="1" placeholder="Add a note…" oninput="updateNote(${idx},this.value)">${esc(item.note||'')}</textarea>`
@@ -975,8 +990,8 @@ function listItemHTML(lst,canEdit){
 
 async function toggleApprove(listId,e){
   if(e)e.stopPropagation();
-  const lst=S.allLists.find(l=>l.id===listId);
-  if(!lst)return;
+  const lst=S.allLists.find(l=>l.id===listId)||S.myLists.find(l=>l.id===listId);
+  if(!lst||S.mode!=='admin'){toast('Only admin can approve lists');return;}
   lst.approved=!lst.approved;
   lst.approvedAt=lst.approved?Date.now():null;
   // Mirror into myLists if present
@@ -1010,24 +1025,28 @@ function loadList(listId){
   renderCatalogue();renderList();renderSavedLists();
 }
 
-function duplicateList(listId){
+async function duplicateList(listId){
   const src=S.myLists.find(l=>l.id===listId)||S.allLists.find(l=>l.id===listId);
   if(!src)return;
   const newId='list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const dupe={...src,id:newId,name:'Copy of '+src.name,savedAt:Date.now(),approved:false,approvedAt:null};
   S.myLists.push(dupe);
   saveMyListsLocal();
-  if(S.mode==='admin'){S.allLists.push({...dupe});saveBin();}
+  const ai=S.allLists.findIndex(l=>l.id===newId);
+  if(ai<0) S.allLists.push({...dupe});
   renderSavedLists();
   toast('List duplicated');
+  await pushListToJSONBin();
 }
 
 async function deleteList(listId){
   S.myLists=S.myLists.filter(l=>l.id!==listId);
+  S.allLists=S.allLists.filter(l=>l.id!==listId);
   if(S.activeListId===listId){S.activeListId=null;id('current-list-tag').style.display='none';}
   saveMyListsLocal();
-  if(S.mode==='admin'){S.allLists=S.allLists.filter(l=>l.id!==listId);await saveBin();}
   renderSavedLists();
+  if(S.mode==='admin') await saveBin();
+  else await pushListToJSONBin();
 }
 
 function openRenameList(listId){
@@ -1042,9 +1061,11 @@ async function confirmRename(){
   const name=id('rename-input').value.trim();if(!name)return;
   const mi=S.myLists.findIndex(l=>l.id===S.renamingId);
   if(mi>=0){S.myLists[mi].name=name;saveMyListsLocal();}
-  if(S.mode==='admin'){const ai=S.allLists.findIndex(l=>l.id===S.renamingId);if(ai>=0){S.allLists[ai].name=name;await saveBin();}}
+  const ai=S.allLists.findIndex(l=>l.id===S.renamingId);
+  if(ai>=0) S.allLists[ai].name=name;
   if(S.activeListId===S.renamingId){const tag=id('current-list-tag');tag.textContent=name;}
   closeRenameModal();renderSavedLists();
+  await pushListToJSONBin();
 }
 
 // Save
@@ -1065,7 +1086,7 @@ async function confirmSaveList(){
     id:listId,owner:S.userName,name,
     shootName:id('shoot-name').value.trim(),
     shootDate:id('shoot-date').value,
-    items:S.packList.map(i=>({...i,noteOpen:undefined})),
+    items:S.packList.map(({noteOpen,...rest})=>rest),
     savedAt:Date.now(),
     approved:existing.approved||false,
     approvedAt:existing.approvedAt||null,
@@ -1182,7 +1203,9 @@ async function saveLocations(){
   S.catalogue=S.catalogue.map(remap);S.packList=S.packList.map(remap);
   S.locations=newLocs;
   if(S.locFilter!=='all'&&!newLocs.includes(S.locFilter))S.locFilter='all';
-  closeLocModal();renderFilters();renderCatalogue();renderList();await saveBin();
+  closeLocModal();renderFilters();renderCatalogue();renderList();
+  await saveBin();
+  toast('Locations updated — team members will see changes within 15 seconds');
 }
 
 // ── Category manager ──────────────────────────────────────────────────────
@@ -1201,13 +1224,17 @@ async function addCategory(){
   const n=id('new-cat-input').value.trim();
   if(!n||S.categories.includes(n))return;
   S.categories.push(n);id('new-cat-input').value='';
-  renderCatTags();renderFilters();renderCatalogue();await saveBin();
+  renderCatTags();renderFilters();renderCatalogue();
+  await saveBin();
+  toast('Category added — team members will see changes within 15 seconds');
 }
 async function deleteCategory(cat){
   S.categories=S.categories.filter(c=>c!==cat);
   S.catalogue=S.catalogue.map(i=>i.category===cat?{...i,category:'(none)'}:i);
   if(S.catFilter===cat)S.catFilter='all';
-  renderCatTags();renderFilters();renderCatalogue();await saveBin();
+  renderCatTags();renderFilters();renderCatalogue();
+  await saveBin();
+  toast('Category removed — team members will see changes within 15 seconds');
 }
 
 // ── CSV import/export ─────────────────────────────────────────────────────
@@ -1259,13 +1286,30 @@ async function submitRequest(){
   const name=id('req-name').value.trim();if(!name){toast('Enter an item name');return;}
   const req={id:'req_'+Date.now(),requester:S.userName,name,notes:id('req-notes').value.trim(),requestedAt:Date.now(),status:'pending'};
   S.requests.push(req);
-  // Viewers can't write directly, save locally and notify
-  try{
-    // Try to push via fetch (viewers don't have master key, so this will only work for admin)
-    if(S.mode==='admin')await saveBin();
-    else{localStorage.setItem('nen2_pending_req_'+S.binId,JSON.stringify([...JSON.parse(localStorage.getItem('nen2_pending_req_'+S.binId)||'[]'),req]));}
-  }catch(e){}
-  closeRequestModal();toast('Request sent to admin');
+  closeRequestModal();
+  if(S.mode==='admin'){
+    await saveBin();
+    toast('Request added');
+  } else {
+    // Viewers push via read-merge-write (same pattern as list save)
+    setSyncStatus('loading','Sending request...');
+    try{
+      const getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
+      const data=await getRes.json();
+      const rec=data.record||data;
+      const merged=[...(rec.requests||[]).filter(r=>r.id!==req.id),req];
+      await fetch(JSONBIN+'/b/'+S.binId,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({...rec,requests:merged,updatedAt:Date.now()})
+      });
+      setSyncStatus('ok','Synced');
+      toast('Request sent to admin');
+    }catch(e){
+      setSyncStatus('error','Sync failed');
+      toast('Request saved locally — will sync when reconnected');
+    }
+  }
 }
 function renderAdminRequests(){
   if(S.mode!=='admin')return;
