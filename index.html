@@ -1059,6 +1059,9 @@ function openNewListModal(){
   $('nlm-from').value=f;
   $('nlm-to').value=t||f;
   $('nlm-unavail-msg').style.display='none';
+  $('nlm-unavail-msg').style.display='none';
+  var cb=document.querySelector('#new-list-modal .btn-confirm');
+  if(cb){cb.textContent='Start list';cb.dataset.phase='';}
   openModal('new-list-modal');
   setTimeout(function(){$('nlm-name').focus();},50);
 }
@@ -1069,24 +1072,56 @@ async function confirmNewList(){
   var from=$('nlm-from').value;
   var to=$('nlm-to').value||from;
   if(to<from) to=from;
-  // Check availability if date changed from what was in catalogue
   var items=S._pendingItems||[];
-  var blocked=[];
+  var blocked=[]; // {name, conflictingList}
   var allowed=[];
   items.forEach(function(item){
+    // Temporarily set the period so getAvailability uses the modal's dates
+    var origFrom=getShootFrom(), origTo=getShootTo();
+    setShootPeriod(from,to);
     var avail=getAvailability(item.id,from);
+    setShootPeriod(origFrom,origTo);
     if(from && avail.available<=0){
-      blocked.push(item.name);
+      // Find which approved list(s) conflict
+      var conflictNames=[];
+      S.allLists.forEach(function(lst){
+        if(!lst.approved) return;
+        if(lst.id===S.activeListId) return;
+        var lf=(lst.shootDate||'').slice(0,10);
+        var lt=(lst.shootDateTo||lst.shootDate||'').slice(0,10);
+        if(!periodsOverlap(from,to,lf,lt)) return;
+        var hasItem=(lst.items||[]).some(function(it){return it.id===item.id;});
+        if(hasItem && conflictNames.indexOf(lst.name)<0) conflictNames.push(lst.name||'Untitled');
+      });
+      blocked.push({name:item.name, lists:conflictNames});
     } else {
       allowed.push(item);
     }
   });
   if(blocked.length){
+    // Build message and show it — keep modal open so user can read it
+    var lines=blocked.map(function(b){
+      var line='<div style="margin-bottom:4px"><strong>'+esc(b.name)+'</strong>';
+      if(b.lists.length) line+='<br><span style="font-size:11px">On: '+b.lists.map(esc).join(', ')+'</span>';
+      line+='</div>';
+      return line;
+    });
     $('nlm-unavail-msg').style.display='';
-    $('nlm-unavail-msg').innerHTML='<strong>Not available on that date — not added:</strong><br>'+blocked.map(function(n){return '• '+esc(n);}).join('<br>');
-    if(!allowed.length) return; // nothing to add
+    $('nlm-unavail-msg').innerHTML='<strong style="display:block;margin-bottom:6px">Not available — not added:</strong>'+lines.join('');
+    if(!allowed.length) return; // nothing to add — keep modal open
+    // Some items are allowed — let user read the message, then proceed via a second click
+    // Change confirm button text to signal this
+    var confirmBtn=$('nlm-unavail-msg').closest('.modal').querySelector('.btn-confirm');
+    if(confirmBtn&&confirmBtn.dataset.phase!=='2'){
+      confirmBtn.dataset.phase='2';
+      confirmBtn.textContent='Add available items anyway';
+      return; // wait for second click
+    }
   }
-  // Apply
+  // ── Apply ──
+  // Reset confirm button if it was changed
+  var confirmBtn2=document.querySelector('#new-list-modal .btn-confirm');
+  if(confirmBtn2){confirmBtn2.textContent='Start list';confirmBtn2.dataset.phase='';}
   $('shoot-name').value=name;
   setShootPeriod(from,to);
   allowed.forEach(function(item){S.packList.push(item);});
