@@ -1537,7 +1537,11 @@ function pdfFilename(shootName,rawDate,locLabel){
 function runExportAll(){
   var shootName=$('ex-name').value.trim()||'Shoot Pack List';
   var rawDate=$('ex-date').value;
-  var shootDate=rawDate?new Date(rawDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  var rawDateTo=getShootTo()||rawDate;
+  if(rawDateTo<rawDate) rawDateTo=rawDate;
+  var dateFromStr=formatDateGB(rawDate)||formatDateGB(new Date().toISOString().slice(0,10));
+  var dateToStr=rawDateTo&&rawDateTo!==rawDate?formatDateGB(rawDateTo):'';
+  var shootDate=dateToStr?dateFromStr+' – '+dateToStr:dateFromStr;
   var locsInList=[];
   S.packList.forEach(function(i){if(locsInList.indexOf(i.location)<0) locsInList.push(i.location);});
   closeModal('export-modal');
@@ -1557,17 +1561,24 @@ function runExportAll(){
   next();
   toast('Downloading '+(downloads.length)+' PDFs...');
 }
+function formatDateGB(iso){
+  return iso?new Date(iso+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
+}
 function runExport(){
   var shootName=$('ex-name').value.trim()||'Shoot Pack List';
-  var rawDate=$('ex-date').value;
+  var rawFrom=$('ex-date').value;
+  var rawTo=getShootTo()||rawFrom;
+  if(rawTo<rawFrom) rawTo=rawFrom;
   if(!$('shoot-name').value.trim()) $('shoot-name').value=shootName;
-  var shootDate=rawDate?new Date(rawDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  var dateFrom=formatDateGB(rawFrom)||formatDateGB(new Date().toISOString().slice(0,10));
+  var dateTo=rawTo&&rawTo!==rawFrom?formatDateGB(rawTo):'';
+  var shootDateStr=dateTo?dateFrom+' – '+dateTo:dateFrom;
   var filter=S.exportFilter;
   var items=filter==='all'?S.packList.slice():S.packList.filter(function(i){return i.location===filter;});
   if(!items.length){ toast('No items for that location'); return; }
   var locLabel=filter==='all'?'Complete kit':filter;
   closeModal('export-modal');
-  generatePDF(shootName,shootDate,rawDate,locLabel,items,filter);
+  generatePDF(shootName,shootDateStr,rawFrom,locLabel,items,filter);
 }
 
 function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
