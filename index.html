@@ -64,6 +64,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .search-box{position:relative;padding:4px 14px 6px}
 .search-box input{width:100%;padding:6px 10px 6px 26px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
 .search-box input:focus{border-color:var(--border2);background:var(--surface)}
+.date-mini{width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
+.date-mini:focus{border-color:var(--border2);background:var(--surface)}
 .search-icon{position:absolute;left:23px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;pointer-events:none}
 .batch-bar{padding:5px 14px;background:var(--blue-bg);border-bottom:1px solid #c5d9f5;display:none;align-items:center;gap:8px;flex-shrink:0}
 .batch-bar span{font-size:12px;color:var(--blue);font-weight:500;flex:1}
@@ -149,6 +151,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .sli-name{font-size:12px;font-weight:600;flex:1;color:var(--text);line-height:1.3;cursor:pointer}
 .sli-meta{font-size:10px;color:var(--text3);margin-top:2px}
 .sli-shoot{font-size:10px;color:var(--text2);margin-top:1px;font-style:italic}
+.sli-modified{font-size:9px;color:var(--text3);margin-top:2px}
 .sli-approved{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;background:var(--green-bg);color:var(--green);border:1px solid #8dc89a;margin-top:3px}
 .sli-menu-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 2px;line-height:1;flex-shrink:0}
 .sli-menu-btn:hover{color:var(--text)}
@@ -188,6 +191,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .export-loc-opt{padding:6px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:inherit;transition:all .12s}
 .export-loc-opt:hover{border-color:var(--text);color:var(--text)}
 .export-loc-opt.active{background:var(--text);color:#fff;border-color:var(--text)}
+.conflict-choice{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.conflict-choice button{padding:9px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left;border:1px solid var(--border)}
+.conflict-choice button:first-child{background:var(--blue);color:#fff;border-color:var(--blue)}
+.conflict-choice button:last-child{background:none;color:var(--text2)}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media(max-width:700px){
@@ -266,6 +273,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       <div class="panel-header"><h2>Gear Catalogue</h2></div>
       <div class="filter-row" id="loc-filter-row"></div>
       <div class="filter-row" id="cat-filter-row"></div>
+      <div class="date-period-row" style="display:flex;gap:6px;padding:4px 14px 2px;align-items:center">
+        <div style="flex:1">
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">From</div>
+          <input type="date" id="shoot-date-from" class="date-mini" oninput="onDateFromChange()" />
+        </div>
+        <div style="flex:1">
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">To</div>
+          <input type="date" id="shoot-date-to" class="date-mini" oninput="onDateToChange()" />
+        </div>
+      </div>
       <div class="search-box">
         <span class="search-icon">&#9906;</span>
         <input type="text" id="search-input" placeholder="Search gear..." oninput="renderCatalogue()" />
@@ -302,10 +319,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
         <div class="main-header-top">
           <h2>Current List</h2>
           <span class="list-tag" id="list-tag" style="display:none"></span>
+          <span id="list-period-label" style="display:none;font-size:10px;color:var(--text3);white-space:nowrap"></span>
         </div>
         <div class="header-fields">
           <input class="header-input" id="shoot-name" placeholder="Client / Project..." />
-          <input class="header-input" type="date" id="shoot-date" oninput="renderCatalogue()" />
         </div>
       </div>
       <div class="list-scroll" id="list-scroll"></div>
@@ -385,6 +402,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
   </div>
 </div>
 
+<div class="modal-overlay" id="new-list-modal" style="display:none" onclick="if(event.target===this)closeModal('new-list-modal')">
+  <div class="modal">
+    <h3>Start new list</h3>
+    <p class="modal-sub">Give this list a project name and confirm the shoot period.</p>
+    <div class="field"><label>Client / Project name</label><input type="text" id="nlm-name" placeholder="e.g. Nike Campaign" /></div>
+    <div class="field">
+      <label>Shoot period</label>
+      <div style="display:flex;gap:8px">
+        <input type="date" id="nlm-from" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none" />
+        <input type="date" id="nlm-to" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none" />
+      </div>
+    </div>
+    <div id="nlm-unavail-msg" style="display:none;background:var(--amber-bg);border:1px solid #e8c87a;border-radius:var(--radius);padding:10px;font-size:12px;color:var(--amber);margin-bottom:8px"></div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('new-list-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmNewList()">Start list</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="conflict-list-modal" style="display:none">
+  <div class="modal">
+    <h3 id="clm-title">List updated by someone else</h3>
+    <p class="modal-sub" id="clm-body"></p>
+    <div class="conflict-choice">
+      <button onclick="adoptRemoteList()">Adopt their changes</button>
+      <button onclick="keepMyList()">Overwrite with my version</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="rename-modal" style="display:none" onclick="if(event.target===this)closeModal('rename-modal')">
   <div class="modal">
     <h3>Rename list</h3>
@@ -451,7 +499,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-var VERSION = 'v1.1';
+var VERSION = 'v1.2';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -463,9 +511,33 @@ var S = {
   batchSelected:[],
   lastSyncedAt:0, remoteUpdatedAt:0,
   cachedBinData:null, pendingWrite:false, autoSyncTimer:null,
-  nextId:1, _pendingQty:{}
+  nextId:1, _pendingQty:{},
+  _pendingItems:null,   // items waiting for new-list confirmation
+  _conflictRemote:null, // remote list version for conflict resolution
+  _listModifiedAt:{},   // listId -> savedAt of last known remote version
 };
 var JSONBIN = 'https://api.jsonbin.io/v3';
+
+function getShootFrom(){ return ($('shoot-date-from')&&$('shoot-date-from').value)||''; }
+function getShootTo(){ return ($('shoot-date-to')&&$('shoot-date-to').value)||''; }
+function setShootPeriod(from,to){
+  if($('shoot-date-from')) $('shoot-date-from').value=from||'';
+  if($('shoot-date-to')) $('shoot-date-to').value=to||from||'';
+}
+function onDateFromChange(){
+  var f=getShootFrom(), t=getShootTo();
+  if(!t||t<f){ if($('shoot-date-to')) $('shoot-date-to').value=f; }
+  renderCatalogue();
+}
+function onDateToChange(){
+  var f=getShootFrom(), t=getShootTo();
+  if(t&&t<f){ if($('shoot-date-to')) $('shoot-date-to').value=f; }
+  renderCatalogue();
+}
+function shootDateForAvailability(){
+  // For availability checks we use the "from" date (start of period)
+  return getShootFrom();
+}
 
 function $(x){ return document.getElementById(x); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -579,7 +651,9 @@ async function launchApp(){
   $('viewer-tools').style.display=adm?'none':'';
   $('share-btn').style.display=adm?'':'none';
   $('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
-  $('shoot-date').value=new Date().toISOString().slice(0,10);
+  var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  var tStr=tomorrow.toISOString().slice(0,10);
+  $('shoot-date-from').value=tStr; $('shoot-date-to').value=tStr;
   var vt=$('version-tag'); if(vt) vt.textContent=VERSION;
   loadMyListsLocal(); loadCacheLocal();
   if(S.cachedBinData) applyBinData(S.cachedBinData);
@@ -624,8 +698,25 @@ function applyBinData(rec){
   S.locations=rec.locations||['Location A','Location B'];
   S.categories=rec.categories||['Camera','Lighting','Grip'];
   S.nextId=rec.nextId||S.catalogue.length+1;
-  S.allLists=rec.teamLists||[];
   S.requests=rec.requests||[];
+  var newLists=rec.teamLists||[];
+  // Conflict check: if a list we have open was updated remotely since we last saw it
+  if(S.activeListId){
+    var remote=newLists.find(function(l){return l.id===S.activeListId;});
+    var knownAt=S._listModifiedAt[S.activeListId]||0;
+    if(remote && remote.savedAt && remote.savedAt>knownAt && knownAt>0){
+      // Someone else updated this list - show conflict modal
+      S.allLists=newLists;
+      renderFilters(); renderCatalogue(); renderSavedLists(); renderAdminRequests();
+      showListConflict(remote);
+      return;
+    }
+    if(remote && !knownAt){
+      // First time we've seen this list - update our known version quietly
+      S._listModifiedAt[S.activeListId]=remote.savedAt||0;
+    }
+  }
+  S.allLists=newLists;
   renderFilters(); renderCatalogue(); renderList(); renderSavedLists(); renderAdminRequests();
 }
 
@@ -645,7 +736,9 @@ async function saveBin(){
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
     S.remoteUpdatedAt=payload.updatedAt; S.lastSyncedAt=Date.now();
-    S.cachedBinData=payload; saveCacheLocal(); clearPending(); setSyncStatus('ok','Saved');
+    S.cachedBinData=payload; saveCacheLocal(); clearPending();
+    S.allLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
+    setSyncStatus('ok','Saved');
   }catch(e){ setSyncStatus('error','Save failed'); markPending(); toast('Save failed: '+e.message); }
 }
 
@@ -669,7 +762,10 @@ async function pushToJSONBin(){
       body:JSON.stringify(body)
     });
     if(!putRes.ok) throw new Error('HTTP '+putRes.status);
-    setSyncStatus('ok','Synced'); clearPending(); toast('Saved & synced');
+    setSyncStatus('ok','Synced'); clearPending();
+  // Update known-version timestamps for our lists
+  S.myLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
+  toast('Saved & synced');
   }catch(e){ setSyncStatus('error','Sync failed'); markPending(); toast('Saved locally - will retry'); }
 }
 
@@ -697,16 +793,27 @@ function renderFilters(){
   };
 }
 
+function periodsOverlap(aFrom,aTo,bFrom,bTo){
+  // All dates as YYYY-MM-DD strings; overlap if not (aTo < bFrom or aFrom > bTo)
+  var af=aFrom||'', at=aTo||aFrom||'', bf=bFrom||'', bt=bTo||bFrom||'';
+  if(!af||!bf) return false;
+  return af<=bt && at>=bf;
+}
 function getAvailability(itemId,forDate){
   var catItem=S.catalogue.find(function(i){return i.id===itemId;});
   var total=catItem?(catItem.qty||1):1;
   if(!forDate) return {booked:0,total:total,available:total};
-  var activeDate=forDate.slice(0,10);
+  var periodFrom=forDate.slice(0,10);
+  var periodTo=(getShootTo()||periodFrom).slice(0,10);
+  if(periodTo<periodFrom) periodTo=periodFrom;
   var booked=0;
   S.allLists.forEach(function(lst){
     if(!lst.approved) return;
-    if(!lst.shootDate||lst.shootDate.slice(0,10)!==activeDate) return;
     if(lst.id===S.activeListId) return;
+    var lf=(lst.shootDate||'').slice(0,10);
+    var lt=(lst.shootDateTo||lst.shootDate||'').slice(0,10);
+    if(!lf) return;
+    if(!periodsOverlap(periodFrom,periodTo,lf,lt)) return;
     (lst.items||[]).forEach(function(it){ if(it.id===itemId) booked+=(it.qtyNeeded||1); });
   });
   return {booked:booked,total:total,available:Math.max(0,total-booked)};
@@ -718,7 +825,7 @@ function renderCatalogue(){
   var mCat=$('m-cat');
   if(mCat){ var curC=mCat.value; mCat.innerHTML=['(none)'].concat(S.categories).map(function(c){return '<option value="'+esc(c)+'"'+(c===curC?' selected':'')+'>'+esc(c)+'</option>';}).join(''); }
   var search=($('search-input').value||'').toLowerCase();
-  var shootDate=$('shoot-date')?$('shoot-date').value:'';
+  var shootDate=shootDateForAvailability();
   var isAdmin=S.mode==='admin';
   var items=S.catalogue.slice();
   if(S.locFilter!=='all') items=items.filter(function(i){return i.location===S.locFilter;});
@@ -791,14 +898,21 @@ function toggleBatch(itemId){
 }
 function clearBatch(){ S.batchSelected=[]; $('batch-bar').style.display='none'; var dsd=$('delete-selected-btn'); if(dsd) dsd.style.display='none'; $('select-all-btn').textContent='Select all'; renderCatalogue(); }
 function addBatchToList(){
+  var toAdd=[];
   S.batchSelected.forEach(function(itemId){
     if(S.packList.find(function(p){return p.id===itemId;})) return;
     var item=S.catalogue.find(function(i){return i.id===itemId;});
     if(item){
       var qty=(S._pendingQty&&S._pendingQty[itemId])||1;
-      S.packList.push(Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:qty}));
+      toAdd.push(Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:qty}));
     }
   });
+  if(!toAdd.length){clearBatch();return;}
+  if(!S.packList.length && !S.activeListId){
+    S._pendingItems=toAdd;
+    clearBatch(); openNewListModal(); return;
+  }
+  toAdd.forEach(function(item){S.packList.push(item);});
   clearBatch(); renderCatalogue(); renderList(); toast('Items added to list');
 }
 function setCatalogueQty(itemId,qty){
@@ -813,7 +927,13 @@ function toggleItem(itemId){
   var item=S.catalogue.find(function(i){return i.id===itemId;});
   if(!item) return;
   var qty=(S._pendingQty&&S._pendingQty[itemId])||1;
-  S.packList.push(Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:qty}));
+  var newItem=Object.assign({},item,{subitems:(item.subitems||[]).slice(),note:'',noteOpen:false,qtyNeeded:qty});
+  if(!S.packList.length && !S.activeListId){
+    // First item - ask for project name & date
+    S._pendingItems=[newItem];
+    openNewListModal(); return;
+  }
+  S.packList.push(newItem);
   renderCatalogue(); renderList();
 }
 function updateListQty(itemId,qty){
@@ -822,15 +942,32 @@ function updateListQty(itemId,qty){
 }
 function removeItem(itemId){ S.packList=S.packList.filter(function(p){return p.id!==itemId;}); renderCatalogue(); renderList(); }
 function clearList(){
-  S.packList=[]; S.activeListId=null; S.batchSelected=[];
-  $('shoot-name').value=''; $('shoot-date').value=new Date().toISOString().slice(0,10);
+  S.packList=[]; S.activeListId=null; S.batchSelected=[]; S._pendingItems=null;
+  $('shoot-name').value='';
+  var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  var tStr=tomorrow.toISOString().slice(0,10);
+  setShootPeriod(tStr,tStr);
   $('list-tag').style.display='none'; $('batch-bar').style.display='none';
+  var pl=$('list-period-label'); if(pl) pl.style.display='none';
+  var dsd=$('delete-selected-btn'); if(dsd) dsd.style.display='none';
+  $('select-all-btn').textContent='Select all';
   renderCatalogue(); renderList(); renderSavedLists();
 }
 
 var dragSrcIdx=null;
 function renderList(){
   $('count-label').textContent=S.packList.length+' item'+(S.packList.length!==1?'s':'')+' selected';
+  // Show date period in main header
+  var hdr=$('list-period-label');
+  if(hdr){
+    var f=getShootFrom(), t=getShootTo();
+    if(f){
+      var df=new Date(f+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      var dt=t&&t!==f?new Date(t+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+      hdr.textContent=dt?df+' – '+dt:df;
+      hdr.style.display='';
+    } else { hdr.style.display='none'; }
+  }
   var scroll=$('list-scroll');
   if(!S.packList.length){ scroll.innerHTML='<div class="empty-list">Add gear from the catalogue</div>'; return; }
   var byLoc={};
@@ -916,6 +1053,91 @@ async function deleteSelectedItems(){
   await saveBin();
   toast('Items deleted from catalogue');
 }
+function openNewListModal(){
+  var f=getShootFrom(), t=getShootTo();
+  $('nlm-name').value=$('shoot-name').value||'';
+  $('nlm-from').value=f;
+  $('nlm-to').value=t||f;
+  $('nlm-unavail-msg').style.display='none';
+  openModal('new-list-modal');
+  setTimeout(function(){$('nlm-name').focus();},50);
+}
+
+async function confirmNewList(){
+  var name=$('nlm-name').value.trim();
+  if(!name){toast('Enter a project name');return;}
+  var from=$('nlm-from').value;
+  var to=$('nlm-to').value||from;
+  if(to<from) to=from;
+  // Check availability if date changed from what was in catalogue
+  var items=S._pendingItems||[];
+  var blocked=[];
+  var allowed=[];
+  items.forEach(function(item){
+    var avail=getAvailability(item.id,from);
+    if(from && avail.available<=0){
+      blocked.push(item.name);
+    } else {
+      allowed.push(item);
+    }
+  });
+  if(blocked.length){
+    $('nlm-unavail-msg').style.display='';
+    $('nlm-unavail-msg').innerHTML='<strong>Not available on that date — not added:</strong><br>'+blocked.map(function(n){return '• '+esc(n);}).join('<br>');
+    if(!allowed.length) return; // nothing to add
+  }
+  // Apply
+  $('shoot-name').value=name;
+  setShootPeriod(from,to);
+  allowed.forEach(function(item){S.packList.push(item);});
+  S._pendingItems=null;
+  closeModal('new-list-modal');
+  // Auto-save immediately
+  var listId='list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  var listObj={
+    id:listId, owner:S.userName, name:name,
+    shootName:name, shootDate:from, shootDateTo:to,
+    items:S.packList.map(function(i){var o=Object.assign({},i);delete o.noteOpen;return o;}),
+    savedAt:Date.now(), approved:false, approvedAt:null, modifiedBy:S.userName,
+  };
+  S.activeListId=listId;
+  S.allLists.push(listObj); S.myLists.push(listObj);
+  saveMyListsLocal();
+  var tag=$('list-tag'); tag.textContent=name; tag.style.display='';
+  S._listModifiedAt[listId]=listObj.savedAt;
+  renderCatalogue(); renderList(); renderSavedLists();
+  await pushToJSONBin();
+  if(blocked.length) toast(blocked.length+' item'+(blocked.length>1?'s':'')+' not added (unavailable)');
+  else toast('List created and saved');
+}
+
+// ── Conflict resolution ──────────────────────────────────────────────────
+function showListConflict(remote){
+  S._conflictRemote=remote;
+  var who=remote.modifiedBy||remote.owner||'someone';
+  $('clm-title').textContent='List updated by '+who;
+  $('clm-body').textContent='This list was saved by '+who+' since you last synced. What would you like to do?';
+  $('conflict-list-modal').style.display='flex';
+}
+function adoptRemoteList(){
+  $('conflict-list-modal').style.display='none';
+  var remote=S._conflictRemote; if(!remote) return;
+  S._conflictRemote=null;
+  S.packList=(remote.items||[]).map(function(i){return Object.assign({},i,{note:i.note||'',noteOpen:false});});
+  $('shoot-name').value=remote.shootName||'';
+  setShootPeriod(remote.shootDate||'',remote.shootDateTo||remote.shootDate||'');
+  var tag=$('list-tag'); tag.textContent=remote.name||'Untitled'; tag.style.display='';
+  S._listModifiedAt[remote.id]=remote.savedAt;
+  renderCatalogue(); renderList();
+  toast('Adopted latest changes');
+}
+async function keepMyList(){
+  $('conflict-list-modal').style.display='none';
+  S._conflictRemote=null;
+  await pushToJSONBin();
+  toast('Your version saved');
+}
+
 function renderSavedLists(){
   var scroll=$('lists-scroll');
   var search=($('lists-search').value||'').toLowerCase();
@@ -940,7 +1162,9 @@ function renderSavedLists(){
 function sliHTML(lst){
   var active=S.activeListId===lst.id;
   var isAdmin=S.mode==='admin';
-  var dateStr=lst.shootDate?new Date(lst.shootDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  var d1=lst.shootDate?new Date(lst.shootDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  var d2=lst.shootDateTo&&lst.shootDateTo!==lst.shootDate?new Date(lst.shootDateTo+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  var dateStr=d1+(d2?' – '+d2:'');
   var count=(lst.items||[]).length;
   var approvedBadge=lst.approved?'<div><span class="sli-approved">Approved</span></div>':'';
   var approveBtn=isAdmin?(lst.approved
@@ -952,6 +1176,7 @@ function sliHTML(lst){
     +'<div class="sli-name">'+esc(lst.name||'Untitled')+'</div>'
     +'<div class="sli-meta">'+(dateStr?dateStr+' - ':'')+count+' item'+(count!==1?'s':'')+'</div>'
     +(lst.shootName?'<div class="sli-shoot">'+esc(lst.shootName)+'</div>':'')
+    +(lst.modifiedBy&&lst.modifiedBy!==lst.owner?'<div class="sli-modified">Last saved by '+esc(lst.modifiedBy)+'</div>':'')
     +approvedBadge
     +'</div>'
     +'<button class="sli-menu-btn" onclick="toggleListMenu(\''+esc(lst.id)+'\',event)">&#8942;</button>'
@@ -970,15 +1195,20 @@ function toggleListMenu(listId,e){ e.stopPropagation(); var m=$('menu_'+listId);
 function closeAllMenus(){ document.querySelectorAll('.sli-dropdown').forEach(function(m){m.style.display='none';}); }
 document.addEventListener('click',closeAllMenus);
 
-function loadList(listId){
+async function loadList(listId){
+  closeAllMenus();
+  // Sync first so we always load the freshest version
+  await syncAll(true);
   var src=S.mode==='admin'?S.allLists:S.myLists;
-  var lst=src.find(function(l){return l.id===listId;});
+  var lst=src.find(function(l){return l.id===listId;})
+    || S.allLists.find(function(l){return l.id===listId;});
   if(!lst) return;
   S.packList=(lst.items||[]).map(function(i){return Object.assign({},i,{note:i.note||'',noteOpen:false});});
   S.activeListId=lst.id;
   $('shoot-name').value=lst.shootName||'';
-  $('shoot-date').value=lst.shootDate||new Date().toISOString().slice(0,10);
+  setShootPeriod(lst.shootDate||'', lst.shootDateTo||lst.shootDate||'');
   var tag=$('list-tag'); tag.textContent=lst.name||'Untitled'; tag.style.display='';
+  S._listModifiedAt[listId]=lst.savedAt||0;
   renderCatalogue(); renderList(); renderSavedLists();
 }
 
@@ -1012,10 +1242,20 @@ function openRenameList(listId){
 async function confirmRename(){
   var name=$('rename-input').value.trim(); if(!name) return;
   var mi=S.myLists.findIndex(function(l){return l.id===S.renamingId;});
-  if(mi>=0){ S.myLists[mi].name=name; saveMyListsLocal(); }
+  if(mi>=0){
+    S.myLists[mi].name=name;
+    S.myLists[mi].shootName=name;  // keep shootName in sync
+    saveMyListsLocal();
+  }
   var ai=S.allLists.findIndex(function(l){return l.id===S.renamingId;});
-  if(ai>=0) S.allLists[ai].name=name;
-  if(S.activeListId===S.renamingId){ $('list-tag').textContent=name; }
+  if(ai>=0){
+    S.allLists[ai].name=name;
+    S.allLists[ai].shootName=name;
+  }
+  if(S.activeListId===S.renamingId){
+    $('list-tag').textContent=name;
+    $('shoot-name').value=name;  // update the project name field in the main panel
+  }
   closeModal('rename-modal'); renderSavedLists();
   await pushToJSONBin();
 }
@@ -1034,11 +1274,15 @@ async function confirmSaveList(){
   var listId=S.activeListId||('list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6));
   var existing=S.allLists.find(function(l){return l.id===listId;})||S.myLists.find(function(l){return l.id===listId;})||{};
   var listObj={
-    id:listId, owner:S.userName, name:name,
+    id:listId,
+    owner:existing.owner||S.userName,  // preserve original owner
+    name:name,
     shootName:$('shoot-name').value.trim(),
-    shootDate:$('shoot-date').value,
+    shootDate:getShootFrom(),
+    shootDateTo:getShootTo(),
     items:S.packList.map(function(i){ var o=Object.assign({},i); delete o.noteOpen; return o; }),
     savedAt:Date.now(),
+    modifiedBy:S.userName,
     approved:existing.approved||false,
     approvedAt:existing.approvedAt||null,
   };
@@ -1228,7 +1472,7 @@ function copyBinId(){ navigator.clipboard.writeText(S.binId).then(function(){toa
 function openExportModal(){
   if(!S.packList.length){ toast('Add some gear first'); return; }
   $('ex-name').value=$('shoot-name').value||'';
-  $('ex-date').value=$('shoot-date').value||new Date().toISOString().slice(0,10);
+  $('ex-date').value=getShootFrom()||new Date().toISOString().slice(0,10);
   S.exportFilter='all';
   var locsInList=[];
   S.packList.forEach(function(i){ if(locsInList.indexOf(i.location)<0) locsInList.push(i.location); });
@@ -1282,7 +1526,6 @@ function runExport(){
   var shootName=$('ex-name').value.trim()||'Shoot Pack List';
   var rawDate=$('ex-date').value;
   if(!$('shoot-name').value.trim()) $('shoot-name').value=shootName;
-  if(!$('shoot-date').value) $('shoot-date').value=rawDate;
   var shootDate=rawDate?new Date(rawDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   var filter=S.exportFilter;
   var items=filter==='all'?S.packList.slice():S.packList.filter(function(i){return i.location===filter;});
@@ -1327,24 +1570,79 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
   var pageBottom=PH-14;
   function checkPage(needed){ if(y+needed>pageBottom){ doc.addPage(); y=18; } }
 
-  var byLoc={};
-  items.forEach(function(item){
-    if(!byLoc[item.location]) byLoc[item.location]={};
-    var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
-    if(!byLoc[item.location][cat]) byLoc[item.location][cat]=[];
-    byLoc[item.location][cat].push(item);
-  });
+  // Location colour palette for pills (matches app)
+  var LOC_PALS=[
+    {bg:[232,240,251],fg:[26,95,168]},
+    {bg:[230,242,233],fg:[42,107,58]},
+    {bg:[251,234,232],fg:[176,58,46]},
+    {bg:[254,243,226],fg:[138,87,0]},
+    {bg:[240,234,251],fg:[107,53,184]},
+    {bg:[230,247,247],fg:[26,122,122]}
+  ];
+  function locPalIdx(loc){ var i=S.locations.indexOf(loc); return (i>=0?i:0)%LOC_PALS.length; }
 
-  Object.keys(byLoc).forEach(function(loc){
-    var catGroups=byLoc[loc];
-    if(filter==='all'){
-      checkPage(12);
-      doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,9,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(200,198,192);
-      doc.text(loc.toUpperCase(),ML+3,y); y+=11;
-    }
-    Object.keys(catGroups).forEach(function(cat){
-      var catItems=catGroups[cat];
+  if(filter==='all'){
+    // Complete kit: group by category first, then location within each category
+    var byCat={};
+    items.forEach(function(item){
+      var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
+      if(!byCat[cat]) byCat[cat]={};
+      if(!byCat[cat][item.location]) byCat[cat][item.location]=[];
+      byCat[cat][item.location].push(item);
+    });
+    Object.keys(byCat).forEach(function(cat){
+      checkPage(9);
+      doc.setFillColor(238,237,232); doc.rect(ML,y-4,usableW,7,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(95,93,88);
+      doc.text(cat.toUpperCase(),ML+3,y); y+=9;
+      Object.keys(byCat[cat]).forEach(function(loc){
+        byCat[cat][loc].forEach(function(item){
+          var subCount=(item.subitems||[]).length;
+          var note=item.note&&item.note.trim();
+          var noteLines=note?doc.splitTextToSize(note,usableW-12):[];
+          var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+4;
+          checkPage(needed);
+          doc.setDrawColor(150,148,140); doc.setLineWidth(0.45);
+          doc.rect(ML,y-4,4,4);
+          var qtyNeeded=item.qtyNeeded||1;
+          // Draw location pill
+          var pi=locPalIdx(item.location);
+          var pbg=LOC_PALS[pi].bg; var pfg=LOC_PALS[pi].fg;
+          var initial=item.location.trim().charAt(0).toUpperCase();
+          var pillW=7;
+          doc.setFillColor(pbg[0],pbg[1],pbg[2]);
+          doc.roundedRect(ML+6,y-4.5,pillW,5,1,1,'F');
+          doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(pfg[0],pfg[1],pfg[2]);
+          doc.text(initial,ML+6+(pillW/2),y-1.2,{align:'center'});
+          // Item label after pill
+          var itemLabel=qtyNeeded+'x  '+item.name;
+          doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(26,25,23);
+          doc.text(itemLabel,ML+6+pillW+2,y-0.5); y+=5;
+          if(subCount>0){
+            doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(115,112,105);
+            (item.subitems||[]).forEach(function(sub){ checkPage(4); doc.text('  -  '+sub,ML+6+pillW+2,y); y+=4; });
+            y+=1;
+          }
+          if(noteLines.length>0){
+            doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
+            noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6+pillW+2,y); y+=4; });
+            y+=1;
+          }
+          y+=3;
+        });
+      });
+      y+=2;
+    });
+  } else {
+    // Single location: group by category, show loc header, no pill needed
+    var byLoc={};
+    items.forEach(function(item){
+      var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
+      if(!byLoc[cat]) byLoc[cat]=[];
+      byLoc[cat].push(item);
+    });
+    Object.keys(byLoc).forEach(function(cat){
+      var catItems=byLoc[cat];
       checkPage(9);
       doc.setFillColor(238,237,232); doc.rect(ML,y-4,usableW,7,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(95,93,88);
@@ -1375,8 +1673,7 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
       });
       y+=2;
     });
-    y+=4;
-  });
+  }
 
   var pageCount=doc.getNumberOfPages();
   for(var p=1;p<=pageCount;p++){
