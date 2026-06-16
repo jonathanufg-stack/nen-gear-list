@@ -551,7 +551,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="modal-overlay" id="csv-modal" style="display:none" onclick="if(event.target===this)closeModal('csv-modal')">
   <div class="modal">
     <h3>Import CSV</h3>
-    <p class=
+    <p class="modal-sub">Columns: name, location, category, qty, subitems, value. Subitems separated by semicolons. First row is header (skipped). Duplicate names are skipped.</p>
+    <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea></div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('csv-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="importCSV()">Import</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
 var VERSION = 'v1.5';
 var S = {
