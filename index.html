@@ -23,9 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px}
 .mode-btn{padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);font-family:inherit;transition:all .15s}
 .mode-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
-.setup-card[data-mode="admin"] #viewer-setup,
-.setup-card[data-mode="viewer"] #admin-setup,
-.setup-card:not([data-mode]) #admin-setup { display:none; }
+
 .field{margin-bottom:14px}
 .field label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
 .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);outline:none}
@@ -227,50 +225,65 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <body>
 
 <div id="setup-screen">
-  <div class="setup-card" id="setup-card" data-mode="viewer">
-    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
-      <h1 style="font-size:20px;font-weight:800;letter-spacing:-.03em;text-transform:uppercase">NEN Gear List Generator</h1>
-      <span id="setup-version" style="font-size:11px;font-weight:500;color:var(--text3)"></span>
-    </div>
-    <p class="sub" style="margin-bottom:6px">NEN gear catalogue and gear list tool.</p>
-    <p id="setup-status" style="font-size:11px;font-weight:600;margin-bottom:20px;color:var(--green)">&#9679; Synced via JSONBin</p>
+  <div class="setup-card">
 
-    <div class="mode-toggle" style="margin-bottom:20px">
-      <button class="mode-btn" id="mode-admin-btn" onclick="setMode('admin')">&#128273; Admin</button>
-      <button class="mode-btn active" id="mode-viewer-btn" onclick="setMode('viewer')">&#128065; Team member</button>
-    </div>
-
-    <!-- Team member panel (default) -->
-    <div id="viewer-setup">
-      <div class="field"><label>First name</label>
-        <input type="text" id="viewer-name" placeholder="e.g. Jamie" autocomplete="given-name" />
-        <p class="hint">Must be unique — if your name is already taken you'll be asked to choose another.</p>
+    <!-- Header -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+        <h1 style="font-size:20px;font-weight:800;letter-spacing:-.03em;text-transform:uppercase">NEN Gear List Generator</h1>
+        <span id="setup-version" style="font-size:11px;font-weight:500;color:var(--text3)"></span>
       </div>
-      <div class="field"><label>Bin ID</label>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:4px">NEN gear catalogue and gear list tool.</p>
+      <p style="font-size:11px;font-weight:600;color:var(--green)">&#9679; Synced via JSONBin</p>
+    </div>
+
+    <!-- Tab buttons -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px">
+      <button id="tab-viewer-btn"
+        style="padding:12px;border:1px solid var(--text);border-radius:8px;background:var(--text);color:#fff;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit"
+        onclick="showPanel('viewer')">&#128065; Team member</button>
+      <button id="tab-admin-btn"
+        style="padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit"
+        onclick="showPanel('admin')">&#128273; Admin</button>
+    </div>
+
+    <!-- Viewer panel -->
+    <div id="panel-viewer">
+      <div class="field">
+        <label>First name</label>
+        <input type="text" id="viewer-name" placeholder="e.g. Jamie" autocomplete="given-name" />
+        <p class="hint">Must be unique across the team.</p>
+      </div>
+      <div class="field">
+        <label>Bin ID</label>
         <input type="text" id="viewer-bin-id" placeholder="Paste the Bin ID from your admin" />
         <p class="hint">Or use an invite link — ask your admin for one.</p>
       </div>
-      <div id="viewer-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:var(--radius);padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
+      <div id="viewer-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:8px;padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
       <button class="btn-primary" id="viewer-connect-btn" onclick="viewerConnect()">Open &#8594;</button>
     </div>
 
-    <!-- Admin panel (hidden by default) -->
-    <div id="admin-setup">
-      <div class="field"><label>First name</label>
+    <!-- Admin panel -->
+    <div id="panel-admin" style="display:none">
+      <div class="field">
+        <label>First name</label>
         <input type="text" id="admin-name" placeholder="e.g. Jonathan" autocomplete="given-name" />
-        <p class="hint">Used to identify who made changes. Must be unique — no two people can share the same name.</p>
+        <p class="hint">Must be unique. Used to track who made changes.</p>
       </div>
-      <div class="field"><label>Master Key</label>
+      <div class="field">
+        <label>Master Key</label>
         <input type="password" id="admin-key" placeholder="$2a$10$..." autocomplete="off" />
         <p class="hint">Your JSONBin Master Key. Stored only in this browser.</p>
       </div>
-      <div class="field"><label>Bin ID <span style="font-weight:400;color:var(--text3)">— leave blank to create a new catalogue</span></label>
+      <div class="field">
+        <label>Bin ID <span style="font-weight:400;color:var(--text3)">— leave blank to create a new catalogue</span></label>
         <input type="text" id="bin-id-manual" placeholder="Paste existing Bin ID to reconnect" />
         <input type="text" id="bin-id-input" style="display:none" readonly />
       </div>
-      <div id="admin-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:var(--radius);padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
+      <div id="admin-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:8px;padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
       <button class="btn-primary" id="connect-btn" onclick="adminConnect()">Connect &amp; open &#8594;</button>
     </div>
+
   </div>
 </div>
 
@@ -528,8 +541,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
   <div class="modal">
     <h3>Import CSV</h3>
     <p class="modal-sub">Columns: name, location, category, qty, subitems. Subitems separated by semicolons. First row is header (skipped). Duplicate names are skipped.</p>
-    <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></t
-var VERSION = 'v1.5'
+    <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea>
+<script>
 var VERSION = 'v1.5';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
@@ -644,14 +657,29 @@ function setOnline(online){
   if(online && hasPending()){ pushToJSONBin().then(function(){syncAll(true);}); }
   else if(online){ syncAll(true); }
 }
-window.addEventListener('online',function(){setOnline(true);});
-window.addEventListener('offline',function(){setOnline(false);});
+try{window.addEventListener('online',function(){setOnline(true);});}catch(e){}
+try{window.addEventListener('offline',function(){setOnline(false);});}catch(e){}
 
+function showPanel(which){
+  // Show/hide login panels and update tab button styles
+  var isAdmin = which==='admin';
+  var pv=$('panel-viewer'); if(pv) pv.style.display = isAdmin?'none':'block';
+  var pa=$('panel-admin');  if(pa) pa.style.display = isAdmin?'block':'none';
+  var tv=$('tab-viewer-btn');
+  var ta=$('tab-admin-btn');
+  if(tv){
+    tv.style.background   = isAdmin?'var(--surface2)':'var(--text)';
+    tv.style.color        = isAdmin?'var(--text2)':'#fff';
+    tv.style.borderColor  = isAdmin?'var(--border)':'var(--text)';
+  }
+  if(ta){
+    ta.style.background   = isAdmin?'var(--text)':'var(--surface2)';
+    ta.style.color        = isAdmin?'#fff':'var(--text2)';
+    ta.style.borderColor  = isAdmin?'var(--text)':'var(--border)';
+  }
+}
 function setMode(m){
   S.mode=m;
-  var ab=$('mode-admin-btn'); if(ab) ab.classList.toggle('active', m==='admin');
-  var vb=$('mode-viewer-btn'); if(vb) vb.classList.toggle('active', m==='viewer');
-  var sc=$('setup-card'); if(sc) sc.dataset.mode=m;
 }
 
 async function adminConnect(){
@@ -753,7 +781,7 @@ function logout(){
   S.packList=[]; S.myLists=[]; S.allLists=[]; S.activeListId=null; S.batchSelected=[];
   S.listNote=''; S.categoryOrder=[]; S._listModifiedAt={};
   S.userName=''; S.binId=''; S.mode='viewer';
-  setMode('viewer');
+  showPanel('viewer');
 }
 
 async function launchApp(){
@@ -1470,7 +1498,6 @@ async function keepMyList(){
   toast('Your version saved');
 }
 
-async 
 var _archiveOpen=false;
 function renderSavedLists(){
   var scroll=$('lists-scroll');
@@ -1561,7 +1588,7 @@ function sliHTML(lst){
 
 function toggleListMenu(listId,e){ e.stopPropagation(); var m=$('menu_'+listId); var was=m&&m.style.display!=='none'; closeAllMenus(); if(m&&!was) m.style.display='block'; }
 function closeAllMenus(){ document.querySelectorAll('.sli-dropdown').forEach(function(m){m.style.display='none';}); }
-document.addEventListener('click',closeAllMenus);
+try{document.addEventListener('click',closeAllMenus);}catch(e){}
 
 async function loadList(listId){
   closeAllMenus();
@@ -2218,18 +2245,17 @@ loadLocal();
 if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
   if(S.mode==='admin'){
     if($('admin-name')) $('admin-name').value=S.userName||'';
-    $('admin-key').value=S.apiKey||'';
+    if($('admin-key')) $('admin-key').value=S.apiKey||'';
     if($('bin-id-manual')) $('bin-id-manual').value=S.binId;
-    $('bin-id-input').value=S.binId;
-    setMode('admin');
+    showPanel('admin');
   } else {
     if($('viewer-name')) $('viewer-name').value=S.userName||'';
     if($('viewer-bin-id')) $('viewer-bin-id').value=S.binId||'';
-    setMode('viewer');
+    showPanel('viewer');
   }
   if(S.userName&&S.binId){ launchApp(); }
 } else {
-  setMode('viewer');
+  showPanel('viewer');
 }
 if(!navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
