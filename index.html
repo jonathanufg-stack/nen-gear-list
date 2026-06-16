@@ -85,6 +85,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .loc-pill{font-size:9px;font-weight:700;padding:2px 5px;border-radius:20px;white-space:nowrap}
 .cat-chip{font-size:9px;font-weight:600;padding:1px 5px;border-radius:20px;background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
 .cat-subs{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.5;padding-left:2px}
+.cat-group-header{padding:5px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;background:var(--surface2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:0 -0px;position:sticky;top:0;z-index:2}
 .cat-avail{font-size:10px;margin-top:1px}
 .cat-qty-row{display:flex;align-items:center;gap:6px;margin-top:5px}
 .cat-qty-row label{font-size:10px;color:var(--text3)}
@@ -249,22 +250,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
     <!-- Admin panel (hidden by default) -->
     <div id="admin-setup" style="display:none">
-      <div class="setup-steps"><p>
-        <strong>First time? 2-minute setup:</strong><br>
-        1. Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and sign up free<br>
-        2. Click <strong>API Keys</strong> in the sidebar and copy your Master Key<br>
-        3. Paste it below and click Connect
-      </p></div>
-      <div class="field"><label>JSONBin Master Key</label>
+      <div class="field"><label>Master Key</label>
         <input type="password" id="admin-key" placeholder="$2a$10$..." />
-        <p class="hint">Stored only in this browser. Never shared.</p>
+        <p class="hint">Your JSONBin Master Key. Stored only in this browser.</p>
       </div>
-      <div class="field"><label>Bin ID <span style="font-weight:400;color:var(--text3)">(paste existing to reconnect)</span></label>
-        <input type="text" id="bin-id-manual" placeholder="Leave blank to create a new catalogue" />
-        <p class="hint">Paste your existing Bin ID when updating the app so your catalogue is never lost.</p>
-      </div>
-      <div class="field" id="bin-id-field" style="display:none"><label>Bin ID</label>
-        <input type="text" id="bin-id-input" readonly onclick="this.select()" />
+      <div class="field"><label>Bin ID <span style="font-weight:400;color:var(--text3)">— leave blank to create a new catalogue</span></label>
+        <input type="text" id="bin-id-manual" placeholder="Paste existing Bin ID to reconnect" />
+        <input type="text" id="bin-id-input" style="display:none" readonly />
       </div>
       <div id="admin-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:var(--radius);padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
       <button class="btn-primary" id="connect-btn" onclick="adminConnect()">Connect &amp; open &#8594;</button>
@@ -657,7 +649,7 @@ async function adminConnect(){
     var newId=data&&data.metadata&&data.metadata.id;
     if(!newId) throw new Error('No bin ID returned — check your Master Key');
     S.binId=newId; saveLocal();
-    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
+    $('bin-id-input').value=S.binId;
     await launchApp();
   }catch(e){
     setSyncStatus('error','Error');
@@ -910,43 +902,61 @@ function renderCatalogue(){
   });
   var list=$('cat-list');
   if(!items.length){ list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">'+(S.catalogue.length?'No matches':'No gear yet - add some below')+'</div>'; return; }
-  list.innerHTML=items.map(function(item){
-    var inListItem=S.packList.find(function(p){return p.id===item.id;});
-    var qty=item.qty||1;
-    var avail=getAvailability(item.id,shootDate);
-    var fullyBooked=!!(shootDate&&avail.available<=0&&!inListItem);
-    var c=pal(item.location);
-    var checked=S.batchSelected.indexOf(item.id)>=0;
-    var availHTML='';
-    if(qty>1){
-      if(fullyBooked) availHTML='<div class="cat-avail" style="color:var(--red)">Unavailable on this date</div>';
-      else if(avail.booked>0) availHTML='<div class="cat-avail" style="color:var(--amber)">'+avail.available+' of '+qty+' available</div>';
-      else availHTML='<div class="cat-avail" style="color:var(--text3)">'+qty+' available</div>';
-    } else if(fullyBooked){
-      availHTML='<div class="cat-avail" style="color:var(--red)">Unavailable on this date</div>';
-    }
-    var maxQty=shootDate?avail.available:qty;
-    var currentQtyNeeded=inListItem?(inListItem.qtyNeeded||1):((S._pendingQty[item.id])||1);
-    var qtyOpts='';
-    for(var qi=1;qi<=Math.max(1,maxQty);qi++){
-      qtyOpts+='<option value="'+qi+'"'+(currentQtyNeeded===qi?' selected':'')+'>'+qi+'</option>';
-    }
-    var qtyHTML=qty>1&&!fullyBooked?'<div class="cat-qty-row"><label>Qty needed:</label><select class="qty-select" data-qtyid="'+item.id+'">'+qtyOpts+'</select></div>':'';
-    var addLabel=inListItem?'In list':fullyBooked?'Booked':'+ Add';
-    return '<div class="cat-item'+(inListItem?' in-list':'')+(fullyBooked?' unavail':'')+'" data-id="'+item.id+'">'
-      +'<div class="cat-item-top">'
-      +'<input type="checkbox" class="cat-check"'+(checked?' checked':'')+(fullyBooked?' disabled':'')+' data-checkid="'+item.id+'" />'
-      +'<span class="cat-name" data-editid="'+(isAdmin?item.id:-1)+'">'+esc(item.name)+'</span>'
-      +'<span class="loc-pill" style="background:'+c.bg+';color:'+c.fg+'">'+esc(locShort(item.location))+'</span>'
-      +(isAdmin?'<button class="admin-icon-btn" data-delid="'+item.id+'" title="Remove">&#x1F5D1;</button>':'')
-      +'<button class="add-btn'+(inListItem?' added':'')+(fullyBooked?' disabled':'')+'" data-addid="'+item.id+'"'+(fullyBooked?' disabled':'')+'>'+addLabel+'</button>'
-      +'</div>'
-      +(item.category&&item.category!=='(none)'?'<div style="margin-top:2px"><span class="cat-chip">'+esc(item.category)+'</span></div>':'')
-      +availHTML
-      +qtyHTML
-      +(item.subitems&&item.subitems.length?'<div class="cat-subs">'+item.subitems.map(function(s){return '- '+esc(s);}).join('  ')+'</div>':'')
-      +'</div>';
-  }).join('');
+  // Group by category with headers
+  var catOrd3=sortedCategories();
+  var byCat3={};var catKeys3=[];
+  items.forEach(function(item){
+    var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
+    if(!byCat3[cat]){byCat3[cat]=[];catKeys3.push(cat);}
+    byCat3[cat].push(item);
+  });
+  catKeys3.sort(function(a,b){
+    var ai=catOrd3.indexOf(a),bi=catOrd3.indexOf(b);
+    if(ai<0&&bi<0) return a.localeCompare(b);
+    if(ai<0) return 1; if(bi<0) return -1;
+    return ai-bi;
+  });
+  var allRows='';
+  catKeys3.forEach(function(cat){
+    allRows+='<div class="cat-group-header">'+esc(cat)+'</div>';
+    byCat3[cat].forEach(function(item){
+      var inListItem=S.packList.find(function(p){return p.id===item.id;});
+      var qty=item.qty||1;
+      var avail=getAvailability(item.id,shootDate);
+      var fullyBooked=!!(shootDate&&avail.available<=0&&!inListItem);
+      var cv=pal(item.location);
+      var checked=S.batchSelected.indexOf(item.id)>=0;
+      var availHTML='';
+      if(qty>1){
+        if(fullyBooked) availHTML='<div class="cat-avail" style="color:var(--red)">Unavailable on this date</div>';
+        else if(avail.booked>0) availHTML='<div class="cat-avail" style="color:var(--amber)">'+avail.available+' of '+qty+' available</div>';
+        else availHTML='<div class="cat-avail" style="color:var(--text3)">'+qty+' available</div>';
+      } else if(fullyBooked){
+        availHTML='<div class="cat-avail" style="color:var(--red)">Unavailable on this date</div>';
+      }
+      var maxQty=shootDate?avail.available:qty;
+      var currentQtyNeeded=inListItem?(inListItem.qtyNeeded||1):((S._pendingQty[item.id])||1);
+      var qtyOpts='';
+      for(var qi=1;qi<=Math.max(1,maxQty);qi++){ qtyOpts+='<option value="'+qi+'"'+(currentQtyNeeded===qi?' selected':'')+'>'+qi+'</option>'; }
+      var qtyHTML=qty>1&&!fullyBooked?'<div class="cat-qty-row"><label>Qty needed:</label><select class="qty-select" data-qtyid="'+item.id+'">'+qtyOpts+'</select></div>':'';
+      var addLabel=inListItem?'In list':fullyBooked?'Booked':'+ Add';
+      var isAdmin=S.mode==='admin';
+      allRows+='<div class="cat-item'+(inListItem?' in-list':'')+(fullyBooked?' unavail':'')+'" data-id="'+item.id+'">'
+        +'<div class="cat-item-top">'
+        +'<input type="checkbox" class="cat-check"'+(checked?' checked':'')+(fullyBooked?' disabled':'')+' data-checkid="'+item.id+'" />'
+        +'<span class="cat-name" data-editid="'+(isAdmin?item.id:-1)+'">'+esc(item.name)+'</span>'
+        +'<span class="loc-pill" style="background:'+cv.bg+';color:'+cv.fg+'">'+esc(locShort(item.location))+'</span>'
+        +(isAdmin?'<button class="admin-icon-btn" data-delid="'+item.id+'" title="Remove">&#x1F5D1;</button>':'')
+        +'<button class="add-btn'+(inListItem?' added':'')+(fullyBooked?' disabled':'')+'" data-addid="'+item.id+'"'+(fullyBooked?' disabled':'')+'>'+addLabel+'</button>'
+        +'</div>'
+        +(item.category&&item.category!=='(none)'?'':'')
+        +availHTML
+        +qtyHTML
+        +(item.subitems&&item.subitems.length?'<div class="cat-subs">'+item.subitems.map(function(s){return '- '+esc(s);}).join('  ')+'</div>':'')
+        +'</div>';
+    });
+  });
+  list.innerHTML=allRows;
   list.onclick=function(e){
     var addBtn=e.target.closest('[data-addid]');
     if(addBtn&&!addBtn.disabled){ toggleItem(parseInt(addBtn.dataset.addid)); return; }
@@ -1052,22 +1062,25 @@ function renderList(){
     +'</div>';
 
   // Sort by category order
-  var catOrd2=sortedCategories();
-  var sorted=S.packList.map(function(item,i){return {item:item,idx:i};});
-  sorted.sort(function(a,b){
-    var ai=catOrd2.indexOf(a.item.category),bi=catOrd2.indexOf(b.item.category);
-    if(ai<0&&bi<0) return (a.item.category||'').localeCompare(b.item.category||'');
+  var catOrd4=sortedCategories();
+  var byCat4={};var catKeys4=[];
+  S.packList.forEach(function(item,i){
+    var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
+    if(!byCat4[cat]){byCat4[cat]=[];catKeys4.push(cat);}
+    byCat4[cat].push({item:item,idx:i});
+  });
+  catKeys4.sort(function(a,b){
+    var ai=catOrd4.indexOf(a),bi=catOrd4.indexOf(b);
+    if(ai<0&&bi<0) return a.localeCompare(b);
     if(ai<0) return 1; if(bi<0) return -1;
     return ai-bi;
   });
-  var byLoc={};
-  sorted.forEach(function(e){ if(!byLoc[e.item.location]) byLoc[e.item.location]=[]; byLoc[e.item.location].push(e); });
 
   var html=noteHtml;
-  Object.keys(byLoc).forEach(function(loc){
-    var entries=byLoc[loc];
-    html+='<div class="loc-section"><div class="loc-header-row">'+pillHTML(loc)+' '+esc(loc)+'</div>';
-    entries.forEach(function(e){
+  catKeys4.forEach(function(cat){
+    html+='<div class="loc-section">';
+    html+='<div class="loc-header-row" style="text-transform:uppercase;letter-spacing:.08em;font-size:10px">'+esc(cat)+'</div>';
+    byCat4[cat].forEach(function(e){
       var item=e.item; var idx=e.idx;
       var maxQty=item.qty||1;
       var qtyPart='';
@@ -1078,6 +1091,9 @@ function renderList(){
       } else {
         qtyPart='<span style="font-size:10px;color:var(--text3)">x1</span>';
       }
+      // Location pill to show which location this item belongs to
+      var lp=pal(item.location);
+      var locBadge='<span class="loc-pill" style="background:'+lp.bg+';color:'+lp.fg+';font-size:8px">'+esc(locShort(item.location))+'</span>';
       var noteAreaHtml=item.noteOpen
         ?'<textarea class="note-input" rows="2" placeholder="Add a note..." oninput="updateNote('+idx+',this.value)">'+esc(item.note||'')+'</textarea>'
         :'<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ note')+'</button>';
@@ -1086,7 +1102,7 @@ function renderList(){
         +' ondrop="dragDrop(event,'+idx+')" ondragend="dragEnd(event)">'
         +'<span class="drag-handle">&#8286;</span>'
         +'<div class="list-row-info">'
-        +'<div class="list-row-name">'+esc(item.name)+' '+qtyPart+'</div>'
+        +'<div class="list-row-name">'+esc(item.name)+' '+locBadge+' '+qtyPart+'</div>'
         +(item.subitems&&item.subitems.length?'<div class="list-row-subs">'+item.subitems.map(function(s){return '- '+esc(s);}).join('  ')+'</div>':'')
         +'<div class="note-area">'+noteAreaHtml+'</div>'
         +'</div>'
@@ -2012,7 +2028,7 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
   if(S.mode==='admin'){
     $('admin-key').value=S.apiKey||'';
     if($('bin-id-manual')) $('bin-id-manual').value=S.binId;
-    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
+    $('bin-id-input').value=S.binId;
     setMode('admin');
   } else {
     if($('viewer-name')) $('viewer-name').value=S.userName||'';
