@@ -1049,7 +1049,8 @@ function renderCatalogue(){
       var inListItem=S.packList.find(function(p){return p.id===item.id;});
       var qty=item.qty||1;
       var avail=getAvailability(item.id,shootDate);
-      var fullyBooked=!!(shootDate&&avail.available<=0&&!inListItem);
+      var isOOS=item.status==='oos';
+      var fullyBooked=(!!(shootDate&&avail.available<=0&&!inListItem))||isOOS;
       var cv=pal(item.location);
       var checked=S.batchSelected.indexOf(item.id)>=0;
       var availHTML='';
