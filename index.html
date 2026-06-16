@@ -201,9 +201,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .export-loc-opt:hover{border-color:var(--text);color:var(--text)}
 .export-loc-opt.active{background:var(--text);color:#fff;border-color:var(--text)}
 .conflict-choice{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-.conflict-choice button{padding:9px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left;border:1px solid var(--border)}
+.conflict-choice button{padding:9px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left;border:1px solid var(--border);background:none;color:var(--text2)}
 .conflict-choice button:first-child{background:var(--blue);color:#fff;border-color:var(--blue)}
-.conflict-choice button:last-child{background:none;color:var(--text2)}
+.conflict-choice button:last-child{color:var(--red);border-color:var(--red)}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media(max-width:700px){
@@ -237,8 +237,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
     <!-- Team member panel (default) -->
     <div id="viewer-setup">
-      <div class="field"><label>Your name</label>
-        <input type="text" id="viewer-name" placeholder="e.g. Jamie Chen" />
+      <div class="field"><label>First name</label>
+        <input type="text" id="viewer-name" placeholder="e.g. Jamie" autocomplete="given-name" />
+        <p class="hint">Must be unique — if your name is already taken you'll be asked to choose another.</p>
       </div>
       <div class="field"><label>Bin ID</label>
         <input type="text" id="viewer-bin-id" placeholder="Paste the Bin ID from your admin" />
@@ -250,8 +251,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
     <!-- Admin panel (hidden by default) -->
     <div id="admin-setup" style="display:none">
+      <div class="field"><label>First name</label>
+        <input type="text" id="admin-name" placeholder="e.g. Jonathan" autocomplete="given-name" />
+        <p class="hint">Used to identify who made changes. Must be unique — no two people can share the same name.</p>
+      </div>
       <div class="field"><label>Master Key</label>
-        <input type="password" id="admin-key" placeholder="$2a$10$..." />
+        <input type="password" id="admin-key" placeholder="$2a$10$..." autocomplete="off" />
         <p class="hint">Your JSONBin Master Key. Stored only in this browser.</p>
       </div>
       <div class="field"><label>Bin ID <span style="font-weight:400;color:var(--text3)">— leave blank to create a new catalogue</span></label>
@@ -437,8 +442,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <h3 id="clm-title">List updated by someone else</h3>
     <p class="modal-sub" id="clm-body"></p>
     <div class="conflict-choice">
-      <button onclick="adoptRemoteList()">Adopt their changes</button>
+      <button onclick="adoptRemoteList()">Adopt their changes (your unsaved edits will be lost)</button>
+      <button onclick="saveMyListAsCopy()">Save my version as a copy</button>
       <button onclick="keepMyList()">Overwrite with my version</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="approve-modal" style="display:none" onclick="if(event.target===this)closeModal('approve-modal')">
+  <div class="modal">
+    <h3 id="approve-modal-title">Approve this list?</h3>
+    <p class="modal-sub" id="approve-modal-body"></p>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('approve-modal')">Cancel</button>
+      <button class="btn-confirm" id="approve-modal-confirm" onclick="confirmApprove()">Approve</button>
     </div>
   </div>
 </div>
@@ -517,7 +534,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-var VERSION = 'v1.3';
+var VERSION = 'v1.4';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -533,10 +550,40 @@ var S = {
   _pendingItems:null,
   _conflictRemote:null,
   _listModifiedAt:{},
-  categoryOrder:[],     // admin-defined sort order for categories
-  listNote:'',          // list-level note for current list
+  categoryOrder:[],
+  listNote:'',
+  catalogueLastSavedBy:'',
+  catalogueVersion:0,
+  _approvingListId:null,
+  _approvingAction:null,
 };
 var JSONBIN = 'https://api.jsonbin.io/v3';
+
+// Check if a name is already taken by another active user in the bin
+// Returns null if available, or the conflicting role string if taken
+async function checkNameAvailable(name, binId, apiKey){
+  try{
+    var headers={'X-Bin-Meta':'false'};
+    if(apiKey) headers['X-Master-Key']=apiKey;
+    var res=await fetch(JSONBIN+'/b/'+binId+'/latest',{headers:headers});
+    if(!res.ok) return null; // can't check — allow through
+    var data=await res.json();
+    var rec=data.record||data;
+    var users=rec.knownUsers||[];
+    var nameLower=name.toLowerCase();
+    // Check against all registered users except ourselves (same device = same stored name)
+    var storedName=localStorage.getItem('nen3_userName')||'';
+    var conflict=users.find(function(u){
+      return u.name.toLowerCase()===nameLower && u.name!==storedName;
+    });
+    return conflict?conflict.role:null;
+  }catch(e){ return null; } // network error — allow through
+}
+
+// Register or update this user in knownUsers
+function buildUserRecord(name, role){
+  return {name:name, role:role, lastSeen:Date.now()};
+}
 var DEFAULT_CAT_ORDER=['Camera','Lens','Lenses','Filters','Audio','Miscellaneous','Misc','Lighting','Light','Light Modifier','Grip'];
 function sortedCategories(){
   var order=S.categoryOrder.length?S.categoryOrder:DEFAULT_CAT_ORDER;
@@ -612,6 +659,8 @@ function setMode(m){
 }
 
 async function adminConnect(){
+  var firstName=($('admin-name')&&$('admin-name').value.trim())||'';
+  if(!firstName){ showSetupError('admin','Please enter your first name'); return; }
   var key=$('admin-key').value.trim();
   if(!key){ showSetupError('admin','Paste your JSONBin Master Key first'); return; }
   var btn=$('connect-btn'); btn.disabled=true; btn.textContent='Connecting…';
@@ -621,11 +670,16 @@ async function adminConnect(){
     var storedBin=(rawStored&&rawStored!=='undefined'&&rawStored!=='null')?rawStored:'';
     var manualBin=($('bin-id-manual')&&$('bin-id-manual').value.trim())||'';
     var existing=(manualBin&&manualBin!=='undefined'&&manualBin!=='null')?manualBin:storedBin;
-    S.apiKey=key; S.mode='admin'; S.userName='Admin';
+    S.apiKey=key; S.mode='admin'; S.userName=firstName;
     if(existing){
       S.binId=existing; saveLocal();
       var chk=await fetch(JSONBIN+'/b/'+existing+'/latest',{headers:{'X-Bin-Meta':'false','X-Master-Key':key}});
-      if(chk.ok){ await launchApp(); return; }
+      if(chk.ok){
+        // Name uniqueness check against existing users
+        var taken=await checkNameAvailable(firstName,existing,key);
+        if(taken){ showSetupError('admin','The name "'+firstName+'" is already taken by another '+taken+'. Please use a different name.'); btn.disabled=false; btn.textContent='Connect & open →'; return; }
+        await launchApp(); return;
+      }
       localStorage.removeItem('nen3_binId'); S.binId='';
       showSetupError('admin','Could not connect to stored bin — creating a new catalogue…');
       await new Promise(function(r){setTimeout(r,1200);});
@@ -673,6 +727,9 @@ async function viewerConnect(){
     var data=await test.json();
     var rec=data.record||data;
     if(!rec||!rec.catalogue) throw new Error('This Bin ID does not look like a NEN Gear catalogue');
+    // Name uniqueness check
+    var taken=await checkNameAvailable(name,binId,'');
+    if(taken){ showSetupError('viewer','The name "'+name+'" is already taken by another '+taken+'. Please choose a different name.'); btn.disabled=false; btn.textContent='Open →'; return; }
     S.mode='viewer'; S.apiKey=''; S.binId=binId; S.userName=name;
     saveLocal(); await launchApp();
   }catch(e){
@@ -706,9 +763,9 @@ async function launchApp(){
   $('setup-screen').style.display='none';
   $('app-screen').style.display='flex';
   var adm=S.mode==='admin';
-  $('role-badge').textContent=adm?'Admin':'Viewer';
+  $('role-badge').textContent=(adm?'Admin':'Team')+(S.userName?' · '+S.userName:'');
   $('role-badge').className='badge '+(adm?'badge-admin':'badge-viewer');
-  $('user-tag').textContent=S.userName||'';
+  $('user-tag').textContent='';  // name now shown in badge
   $('admin-tools').style.display=adm?'':'none';
   $('viewer-tools').style.display=adm?'none':'';
   $('share-btn').style.display=S.mode==='admin'?'':'none';
@@ -726,7 +783,12 @@ async function launchApp(){
 function setSyncStatus(st,label){
   var cls={ok:'',error:' error',loading:' loading',offline:' offline'}[st]||'';
   $('sync-dot').className='sync-dot'+cls;
-  $('sync-label').textContent=label;
+  // Append lastSavedBy to Synced/Saved messages
+  var display=label;
+  if((st==='ok')&&S.catalogueLastSavedBy&&S.catalogueLastSavedBy!==S.userName){
+    display=label+' · cat. by '+S.catalogueLastSavedBy;
+  }
+  $('sync-label').textContent=display;
 }
 
 async function syncAll(silent){
@@ -762,6 +824,8 @@ function applyBinData(rec){
   S.categoryOrder=rec.categoryOrder||[];
   S.nextId=rec.nextId||S.catalogue.length+1;
   S.requests=rec.requests||[];
+  S.catalogueLastSavedBy=rec.catalogueLastSavedBy||'';
+  S.catalogueVersion=rec.catalogueVersion||0;
   var newLists=rec.teamLists||[];
   // Conflict check: if a list we have open was updated remotely since we last saw it
   if(S.activeListId){
@@ -791,7 +855,12 @@ async function saveBin(){
   if(!navigator.onLine){ markPending(); toast('Offline — will sync when reconnected'); return; }
   setSyncStatus('loading','Saving…');
   try{
-    var payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,categoryOrder:S.categoryOrder,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,updatedAt:Date.now()};
+    // Update knownUsers with current admin
+    var knownUsers=(S.cachedBinData&&S.cachedBinData.knownUsers)||[];
+    var uIdx=knownUsers.findIndex(function(u){return u.name===S.userName;});
+    var uRec=buildUserRecord(S.userName,'admin');
+    if(uIdx>=0) knownUsers[uIdx]=uRec; else knownUsers.push(uRec);
+    var payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,categoryOrder:S.categoryOrder,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,knownUsers:knownUsers,catalogueLastSavedBy:S.userName,catalogueVersion:(S.catalogueVersion||0)+1,updatedAt:Date.now()};
     var res=await fetch(JSONBIN+'/b/'+S.binId,{
       method:'PUT',
       headers:{'Content-Type':'application/json','X-Master-Key':S.apiKey},
@@ -817,7 +886,12 @@ async function pushToJSONBin(){
     var merged=otherLists.concat(S.myLists);
     var myReqs=S.requests.filter(function(r){return r.requester===S.userName;});
     var otherReqs=(rec.requests||[]).filter(function(r){return r.requester!==S.userName;});
-    var body=Object.assign({},rec,{teamLists:merged,requests:otherReqs.concat(myReqs),categoryOrder:S.categoryOrder,updatedAt:Date.now()});
+    // Register/update this viewer in knownUsers
+    var ku=(rec.knownUsers||[]).slice();
+    var kuIdx=ku.findIndex(function(u){return u.name===S.userName;});
+    var kuRec=buildUserRecord(S.userName,'team member');
+    if(kuIdx>=0) ku[kuIdx]=kuRec; else ku.push(kuRec);
+    var body=Object.assign({},rec,{teamLists:merged,requests:otherReqs.concat(myReqs),categoryOrder:S.categoryOrder,knownUsers:ku,updatedAt:Date.now()});
     var putRes=await fetch(JSONBIN+'/b/'+S.binId,{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
@@ -1096,7 +1170,7 @@ function renderList(){
       var locBadge='<span class="loc-pill" style="background:'+lp.bg+';color:'+lp.fg+';font-size:8px">'+esc(locShort(item.location))+'</span>';
       var noteAreaHtml=item.noteOpen
         ?'<textarea class="note-input" rows="2" placeholder="Add a note..." oninput="updateNote('+idx+',this.value)">'+esc(item.note||'')+'</textarea>'
-        :'<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ note')+'</button>';
+        :'<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ Add Note')+'</button>';
       html+='<div class="list-row" draggable="true" data-idx="'+idx+'"'
         +' ondragstart="dragStart(event,'+idx+')" ondragover="dragOver(event,'+idx+')"'
         +' ondrop="dragDrop(event,'+idx+')" ondragend="dragEnd(event)">'
@@ -1137,7 +1211,7 @@ function toggleNote(idx){
       var ta=noteArea.querySelector('textarea');
       if(ta){ ta.focus(); var len=ta.value.length; ta.setSelectionRange(len,len); }
     } else {
-      noteArea.innerHTML='<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ note')+'</button>';
+      noteArea.innerHTML='<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ Add Note')+'</button>';
     }
   } else {
     renderList();
@@ -1199,7 +1273,6 @@ function openNewListModal(){
   $('nlm-name').value=$('shoot-name').value||'';
   $('nlm-from').value=f;
   $('nlm-to').value=t||f;
-  $('nlm-unavail-msg').style.display='none';
   $('nlm-unavail-msg').style.display='none';
   var cb=document.querySelector('#new-list-modal .btn-confirm');
   if(cb){cb.textContent='Start list';cb.dataset.phase='';}
@@ -1307,6 +1380,34 @@ function adoptRemoteList(){
   renderCatalogue(); renderList();
   toast('Adopted latest changes');
 }
+async function saveMyListAsCopy(){
+  $('conflict-list-modal').style.display='none';
+  S._conflictRemote=null;
+  // Create a brand new list ID so this doesn't overwrite the remote version
+  var newId='list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  var originalName=$('shoot-name').value.trim()||$('list-tag').textContent||'Untitled';
+  var copyName='Copy of '+originalName;
+  var listObj={
+    id:newId, owner:S.userName, name:copyName,
+    shootName:copyName,
+    shootDate:getShootFrom(), shootDateTo:getShootTo(),
+    listNote:S.listNote||'',
+    items:S.packList.map(function(i){ var o=Object.assign({},i); delete o.noteOpen; return o; }),
+    savedAt:Date.now(), modifiedBy:S.userName,
+    approved:false, approvedAt:null,
+  };
+  S.activeListId=newId;
+  S._listModifiedAt[newId]=listObj.savedAt;
+  S.allLists.push(listObj);
+  S.myLists.push(listObj);
+  saveMyListsLocal();
+  var tag=$('list-tag'); tag.textContent=copyName; tag.style.display='';
+  $('shoot-name').value=copyName;
+  renderSavedLists();
+  await pushToJSONBin();
+  toast('Saved as "'+copyName+'"');
+}
+
 async function keepMyList(){
   $('conflict-list-modal').style.display='none';
   S._conflictRemote=null;
@@ -1314,12 +1415,7 @@ async function keepMyList(){
   toast('Your version saved');
 }
 
-async function saveCategoryOrder(){
-  // Order is already updated live during drag; just persist and close
-  closeModal('cat-modal');
-  renderFilters(); renderCatalogue(); renderList();
-  await saveBin();
-}
+async 
 var _archiveOpen=false;
 function renderSavedLists(){
   var scroll=$('lists-scroll');
@@ -1365,32 +1461,48 @@ function sliHTML(lst){
   var isAdmin=S.mode==='admin';
   var d1=lst.shootDate?new Date(lst.shootDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
   var d2=lst.shootDateTo&&lst.shootDateTo!==lst.shootDate?new Date(lst.shootDateTo+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
-  var dateStr=d1+(d2?' – '+d2:'');
+  var dateStr=d1+(d2?'\u2013'+d2:'');
   var count=(lst.items||[]).length;
+  var lid=esc(lst.id);
+  // Last edited line: who + relative time
+  var editedLine='';
+  if(lst.savedAt){
+    var ago=Date.now()-lst.savedAt;
+    var agoStr;
+    if(ago<60000) agoStr='just now';
+    else if(ago<3600000) agoStr=Math.floor(ago/60000)+'m ago';
+    else if(ago<86400000) agoStr=Math.floor(ago/3600000)+'h ago';
+    else agoStr=Math.floor(ago/86400000)+'d ago';
+    var who=lst.modifiedBy||lst.owner||'';
+    editedLine='<div class="sli-modified">'+(who?esc(who)+' \u00b7 ':'')+agoStr+'</div>';
+  }
   var approvedBadge=lst.approved?'<div><span class="sli-approved">Approved</span></div>':'';
-  var approveBtn=isAdmin?(lst.approved
-    ?'<button class="unapprove-btn" onclick="toggleApprove(\''+esc(lst.id)+'\',event)">Remove approval</button>'
-    :'<button class="approve-btn" onclick="toggleApprove(\''+esc(lst.id)+'\',event)">Approve list</button>'):'';
-  return '<div class="sli'+(active?' active':'')+'" id="sli_'+esc(lst.id)+'">'
-    +'<div class="sli-top">'
-    +'<div style="flex:1" onclick="loadList(\''+esc(lst.id)+'\');closeAllMenus()">'
-    +'<div class="sli-name">'+esc(lst.name||'Untitled')+'</div>'
-    +'<div class="sli-meta">'+(dateStr?dateStr+' - ':'')+count+' item'+(count!==1?'s':'')+'</div>'
-    +(lst.shootName?'<div class="sli-shoot">'+esc(lst.shootName)+'</div>':'')
-    +(lst.modifiedBy&&lst.modifiedBy!==lst.owner?'<div class="sli-modified">Last saved by '+esc(lst.modifiedBy)+'</div>':'')
-    +approvedBadge
-    +'</div>'
-    +'<button class="sli-menu-btn" onclick="toggleListMenu(\''+esc(lst.id)+'\',event)">&#8942;</button>'
-    +'</div>'
-    +(approveBtn?'<div>'+approveBtn+'</div>':'')
-    +'<div class="sli-dropdown" id="menu_'+esc(lst.id)+'" style="display:none">'
-    +'<button onclick="loadList(\''+esc(lst.id)+'\');closeAllMenus()">Open</button>'
-    +'<button onclick="duplicateList(\''+esc(lst.id)+'\');closeAllMenus()">Duplicate</button>'
-    +'<button onclick="openRenameList(\''+esc(lst.id)+'\');closeAllMenus()">Rename</button>'
-    +'<button class="red" onclick="deleteList(\''+esc(lst.id)+'\');closeAllMenus()">Delete</button>'
-    +'</div>'
-    +'</div>';
+  var approveBtn='';
+  if(isAdmin){
+    approveBtn=lst.approved
+      ?'<button class="unapprove-btn" onclick="toggleApprove(\''+lid+'\',event)">Remove approval</button>'
+      :'<button class="approve-btn" onclick="toggleApprove(\''+lid+'\',event)">Approve list</button>';
+  }
+  var h='<div class="sli'+(active?' active':'')+'" id="sli_'+lid+'">';
+  h+='<div class="sli-top">';
+  h+='<div style="flex:1" onclick="loadList(\''+lid+'\');closeAllMenus()">';
+  h+='<div class="sli-name">'+esc(lst.name||'Untitled')+'</div>';
+  h+='<div class="sli-meta">'+(dateStr?dateStr+' \u00b7 ':'')+count+' item'+(count!==1?'s':'')+'</div>';
+  h+=editedLine;
+  h+=approvedBadge;
+  h+='</div>';
+  h+='<button class="sli-menu-btn" onclick="toggleListMenu(\''+lid+'\',event)">&#8942;</button>';
+  h+='</div>';
+  if(approveBtn) h+='<div>'+approveBtn+'</div>';
+  h+='<div class="sli-dropdown" id="menu_'+lid+'" style="display:none">';
+  h+='<button onclick="loadList(\''+lid+'\');closeAllMenus()">Open</button>';
+  h+='<button onclick="duplicateList(\''+lid+'\');closeAllMenus()">Duplicate</button>';
+  h+='<button onclick="openRenameList(\''+lid+'\');closeAllMenus()">Rename</button>';
+  h+='<button class="red" onclick="deleteList(\''+lid+'\');closeAllMenus()">Delete</button>';
+  h+='</div></div>';
+  return h;
 }
+
 
 function toggleListMenu(listId,e){ e.stopPropagation(); var m=$('menu_'+listId); var was=m&&m.style.display!=='none'; closeAllMenus(); if(m&&!was) m.style.display='block'; }
 function closeAllMenus(){ document.querySelectorAll('.sli-dropdown').forEach(function(m){m.style.display='none';}); }
@@ -1398,7 +1510,6 @@ document.addEventListener('click',closeAllMenus);
 
 async function loadList(listId){
   closeAllMenus();
-  // Sync first so we always load the freshest version
   await syncAll(true);
   var src=S.mode==='admin'?S.allLists:S.myLists;
   var lst=src.find(function(l){return l.id===listId;})
@@ -1418,7 +1529,7 @@ async function duplicateList(listId){
   var src=S.myLists.find(function(l){return l.id===listId;})||S.allLists.find(function(l){return l.id===listId;});
   if(!src) return;
   var newId='list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  var dupe=Object.assign({},src,{id:newId,name:'Copy of '+src.name,savedAt:Date.now(),approved:false,approvedAt:null});
+  var dupe=Object.assign({},src,{id:newId,name:'Copy of '+src.name,savedAt:Date.now(),approved:false,approvedAt:null,modifiedBy:S.userName});
   S.myLists.push(dupe);
   if(S.allLists.findIndex(function(l){return l.id===newId;})<0) S.allLists.push(Object.assign({},dupe));
   saveMyListsLocal(); renderSavedLists(); toast('List duplicated');
@@ -1444,20 +1555,10 @@ function openRenameList(listId){
 async function confirmRename(){
   var name=$('rename-input').value.trim(); if(!name) return;
   var mi=S.myLists.findIndex(function(l){return l.id===S.renamingId;});
-  if(mi>=0){
-    S.myLists[mi].name=name;
-    S.myLists[mi].shootName=name;  // keep shootName in sync
-    saveMyListsLocal();
-  }
+  if(mi>=0){ S.myLists[mi].name=name; S.myLists[mi].shootName=name; saveMyListsLocal(); }
   var ai=S.allLists.findIndex(function(l){return l.id===S.renamingId;});
-  if(ai>=0){
-    S.allLists[ai].name=name;
-    S.allLists[ai].shootName=name;
-  }
-  if(S.activeListId===S.renamingId){
-    $('list-tag').textContent=name;
-    $('shoot-name').value=name;  // update the project name field in the main panel
-  }
+  if(ai>=0){ S.allLists[ai].name=name; S.allLists[ai].shootName=name; }
+  if(S.activeListId===S.renamingId){ $('list-tag').textContent=name; $('shoot-name').value=name; }
   closeModal('rename-modal'); renderSavedLists();
   await pushToJSONBin();
 }
@@ -1476,18 +1577,13 @@ async function confirmSaveList(){
   var listId=S.activeListId||('list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6));
   var existing=S.allLists.find(function(l){return l.id===listId;})||S.myLists.find(function(l){return l.id===listId;})||{};
   var listObj={
-    id:listId,
-    owner:existing.owner||S.userName,  // preserve original owner
-    name:name,
+    id:listId, owner:existing.owner||S.userName, name:name,
     shootName:$('shoot-name').value.trim(),
-    shootDate:getShootFrom(),
-    shootDateTo:getShootTo(),
+    shootDate:getShootFrom(), shootDateTo:getShootTo(),
     listNote:S.listNote||'',
     items:S.packList.map(function(i){ var o=Object.assign({},i); delete o.noteOpen; return o; }),
-    savedAt:Date.now(),
-    modifiedBy:S.userName,
-    approved:existing.approved||false,
-    approvedAt:existing.approvedAt||null,
+    savedAt:Date.now(), modifiedBy:S.userName,
+    approved:existing.approved||false, approvedAt:existing.approvedAt||null,
   };
   var ai=S.allLists.findIndex(function(l){return l.id===listId;});
   if(ai>=0) S.allLists[ai]=listObj; else S.allLists.push(listObj);
@@ -1506,12 +1602,41 @@ async function toggleApprove(listId,e){
   if(S.mode!=='admin'){ toast('Only admin can approve lists'); return; }
   var lst=S.allLists.find(function(l){return l.id===listId;})||S.myLists.find(function(l){return l.id===listId;});
   if(!lst) return;
-  lst.approved=!lst.approved; lst.approvedAt=lst.approved?Date.now():null;
+  S._approvingListId=listId;
+  var d1=lst.shootDate?new Date(lst.shootDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  var d2=lst.shootDateTo&&lst.shootDateTo!==lst.shootDate?new Date(lst.shootDateTo+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  var dateStr=d1+(d2?' – '+d2:'');
+  if(lst.approved){
+    // Removing approval
+    $('approve-modal-title').textContent='Remove approval?';
+    $('approve-modal-body').textContent='Removing approval will release the gear back into the pool'+(dateStr?' for '+dateStr:'')+'. Anyone on the team will be able to add these items to their lists again.';
+    $('approve-modal-confirm').textContent='Remove approval';
+    $('approve-modal-confirm').className='btn-danger';
+    S._approvingAction='remove';
+  } else {
+    // Approving
+    $('approve-modal-title').textContent='Approve this list?';
+    $('approve-modal-body').textContent='Approving this list will mark the gear as booked'+(dateStr?' for '+dateStr:'')+'. Other team members won’t be able to add these items to their own lists for those dates.';
+    $('approve-modal-confirm').textContent='Approve';
+    $('approve-modal-confirm').className='btn-confirm';
+    S._approvingAction='approve';
+  }
+  openModal('approve-modal');
+}
+async function confirmApprove(){
+  closeModal('approve-modal');
+  var listId=S._approvingListId; if(!listId) return;
+  var action=S._approvingAction||'approve';
+  S._approvingListId=null; S._approvingAction=null;
+  var lst=S.allLists.find(function(l){return l.id===listId;})||S.myLists.find(function(l){return l.id===listId;});
+  if(!lst) return;
+  var approving=action==='approve';
+  lst.approved=approving; lst.approvedAt=approving?Date.now():null;
   var mi=S.myLists.findIndex(function(l){return l.id===listId;});
   if(mi>=0){ S.myLists[mi].approved=lst.approved; S.myLists[mi].approvedAt=lst.approvedAt; }
   saveMyListsLocal(); renderSavedLists(); renderCatalogue();
   await saveBin();
-  toast(lst.approved?'List approved':'Approval removed');
+  toast(approving?'List approved':'Approval removed');
 }
 
 function openModal(id){
@@ -1546,6 +1671,7 @@ function openItemModal(editId){
   setTimeout(function(){$('m-name').focus();},50);
 }
 function closeItemModal(){ closeModal('item-modal'); S.editingId=null; }
+
 async function saveItem(){
   if(S.mode!=='admin'){ toast('Admin only'); return; }
   var name=$('m-name').value.trim(); if(!name){ toast('Enter a name'); return; }
@@ -1558,18 +1684,20 @@ async function saveItem(){
     var i=S.catalogue.findIndex(function(x){return x.id===S.editingId;});
     if(i>=0) S.catalogue[i]=Object.assign({},S.catalogue[i],{name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
     var pi=S.packList.findIndex(function(x){return x.id===S.editingId;});
-    if(pi>=0) S.packList[pi]=Object.assign({},S.packList[pi],{name:name,location:location,category:category,qty:qty,subitems:subitems});
+    if(pi>=0) S.packList[pi]=Object.assign({},S.packList[pi],{name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
   } else {
     S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
   }
   closeItemModal(); renderCatalogue(); renderList(); await saveBin();
 }
+
 async function deleteItem(){
   if(S.mode!=='admin'||!S.editingId) return;
   S.catalogue=S.catalogue.filter(function(i){return i.id!==S.editingId;});
   S.packList=S.packList.filter(function(i){return i.id!==S.editingId;});
   closeItemModal(); renderCatalogue(); renderList(); await saveBin();
 }
+
 async function dupeItem(){
   if(S.mode!=='admin'||!S.editingId) return;
   var src=S.catalogue.find(function(i){return i.id===S.editingId;}); if(!src) return;
@@ -1584,6 +1712,7 @@ function renderLocEdit(){
 }
 function delPendingLoc(i){ if(S._pendingLocs.length<=1){ toast('Need at least one location'); return; } S._pendingLocs.splice(i,1); renderLocEdit(); }
 function addLocation(){ var n=$('new-loc-input').value.trim(); if(!n) return; S._pendingLocs.push(n); $('new-loc-input').value=''; renderLocEdit(); }
+
 async function saveLocations(){
   var inputs=$('loc-edit-list').querySelectorAll('input');
   var newLocs=Array.from(inputs).map(function(inp){return inp.value.trim();}).filter(Boolean);
@@ -1594,14 +1723,14 @@ async function saveLocations(){
   S.locations=newLocs;
   if(S.locFilter!=='all'&&!newLocs.includes(S.locFilter)) S.locFilter='all';
   closeModal('loc-modal'); renderFilters(); renderCatalogue(); renderList();
-  await saveBin(); toast('Locations updated - team members sync within 15s');
+  await saveBin(); toast('Locations updated \u2014 team members sync within 15s');
 }
 
 var _catDragSrc=null;
 function renderCatTags(){
   var ordered=sortedCategories();
   var list=$('cat-drag-list'); if(!list) return;
-  list.innerHTML=ordered.map(function(cat,i){
+  list.innerHTML=ordered.map(function(cat){
     return '<div class="cat-drag-row" draggable="true" data-cat="'+esc(cat)+'">'
       +'<span class="cat-drag-handle">&#8286;</span>'
       +'<span class="cat-drag-name">'+esc(cat)+'</span>'
@@ -1609,38 +1738,28 @@ function renderCatTags(){
       +'</div>';
   }).join('');
   list.querySelectorAll('.cat-drag-row').forEach(function(row){
-    row.addEventListener('dragstart',function(e){
-      _catDragSrc=row.dataset.cat;
-      row.classList.add('dragging-cat');
-      e.dataTransfer.effectAllowed='move';
-    });
-    row.addEventListener('dragend',function(){
-      row.classList.remove('dragging-cat');
-      list.querySelectorAll('.cat-drag-row').forEach(function(r){r.classList.remove('drag-over-cat');});
-    });
-    row.addEventListener('dragover',function(e){
-      e.preventDefault();
-      list.querySelectorAll('.cat-drag-row').forEach(function(r){r.classList.remove('drag-over-cat');});
-      row.classList.add('drag-over-cat');
-    });
+    row.addEventListener('dragstart',function(e){ _catDragSrc=row.dataset.cat; row.classList.add('dragging-cat'); e.dataTransfer.effectAllowed='move'; });
+    row.addEventListener('dragend',function(){ row.classList.remove('dragging-cat'); list.querySelectorAll('.cat-drag-row').forEach(function(r){r.classList.remove('drag-over-cat');}); });
+    row.addEventListener('dragover',function(e){ e.preventDefault(); list.querySelectorAll('.cat-drag-row').forEach(function(r){r.classList.remove('drag-over-cat');}); row.classList.add('drag-over-cat'); });
     row.addEventListener('drop',function(e){
-      e.preventDefault();
-      row.classList.remove('drag-over-cat');
+      e.preventDefault(); row.classList.remove('drag-over-cat');
       if(!_catDragSrc||_catDragSrc===row.dataset.cat) return;
       var ordered2=sortedCategories();
       var from=ordered2.indexOf(_catDragSrc), to=ordered2.indexOf(row.dataset.cat);
       if(from<0||to<0) return;
       ordered2.splice(from,1); ordered2.splice(to,0,_catDragSrc);
-      S.categoryOrder=ordered2;
-      _catDragSrc=null;
-      renderCatTags();
+      S.categoryOrder=ordered2; _catDragSrc=null; renderCatTags();
     });
   });
-  list.onclick=function(e){
-    var btn=e.target.closest('[data-delcat]');
-    if(btn) deleteCategory(btn.dataset.delcat);
-  };
+  list.onclick=function(e){ var btn=e.target.closest('[data-delcat]'); if(btn) deleteCategory(btn.dataset.delcat); };
 }
+
+async function saveCategoryOrder(){
+  closeModal('cat-modal');
+  renderFilters(); renderCatalogue(); renderList();
+  await saveBin();
+}
+
 async function addCategory(){
   var n=$('new-cat-input').value.trim();
   if(!n||S.categories.includes(n)) return;
@@ -1649,6 +1768,7 @@ async function addCategory(){
   $('new-cat-input').value='';
   renderCatTags(); renderFilters(); renderCatalogue(); await saveBin(); toast('Category added');
 }
+
 async function deleteCategory(cat){
   S.categories=S.categories.filter(function(c){return c!==cat;});
   S.categoryOrder=S.categoryOrder.filter(function(c){return c!==cat;});
@@ -1658,9 +1778,9 @@ async function deleteCategory(cat){
 }
 
 function exportCSV(){
-  var header='name,location,category,qty,subitems';
+  var header='name,location,category,qty,subitems,value';
   var rows=S.catalogue.map(function(item){
-    return ['"'+(item.name||'').replace(/"/g,'""')+'"','"'+(item.location||'').replace(/"/g,'""')+'"','"'+(item.category||'').replace(/"/g,'""')+'"',item.qty||1,'"'+(item.subitems||[]).join(';').replace(/"/g,'""')+'"'].join(',');
+    return ['"'+(item.name||'').replace(/"/g,'""')+'"','"'+(item.location||'').replace(/"/g,'""')+'"','"'+(item.category||'').replace(/"/g,'""')+'"',item.qty||1,'"'+(item.subitems||[]).join(';').replace(/"/g,'""')+'"',item.value||0].join(',');
   });
   var csv=[header].concat(rows).join('\n');
   var blob=new Blob([csv],{type:'text/csv'});
@@ -1669,6 +1789,7 @@ function exportCSV(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   toast('CSV exported');
 }
+
 async function importCSV(){
   var raw=$('csv-input').value.trim(); if(!raw){ toast('Paste CSV data first'); return; }
   var lines=raw.split('\n').slice(1); var added=0;
@@ -1682,12 +1803,13 @@ async function importCSV(){
     var category=cols[2]&&cols[2].replace(/^"|"$/g,'').replace(/""/g,'"');
     var qty=cols[3];
     var subsRaw=cols[4]&&cols[4].replace(/^"|"$/g,'').replace(/""/g,'"');
+    var value=parseFloat(cols[5])||0;
     if(!name) return;
     if(S.catalogue.some(function(x){return x.name.toLowerCase()===name.toLowerCase();})) return;
     var loc=S.locations.includes(location)?location:S.locations[0];
     var cat=S.categories.includes(category)?category:'(none)';
     var subitems=subsRaw?subsRaw.split(';').map(function(s){return s.trim();}).filter(Boolean):[];
-    S.catalogue.push({id:S.nextId++,name:name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems:subitems});
+    S.catalogue.push({id:S.nextId++,name:name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems:subitems,value:value});
     added++;
   });
   closeModal('csv-modal'); renderCatalogue(); await saveBin();
@@ -1702,6 +1824,7 @@ async function submitRequest(){
   await pushToJSONBin();
   toast('Request sent to admin');
 }
+
 function renderAdminRequests(){
   if(S.mode!=='admin') return;
   var pending=S.requests.filter(function(r){return r.status==='pending';});
@@ -1732,9 +1855,7 @@ function copyInviteLink(){
   var inp=$('invite-link-input');
   var link=inp?inp.value:'';
   if(!link) return;
-  navigator.clipboard.writeText(link).then(function(){toast('Invite link copied!');}).catch(function(){
-    if(inp){inp.select();} toast('Select and copy manually');
-  });
+  navigator.clipboard.writeText(link).then(function(){toast('Invite link copied!');}).catch(function(){if(inp) inp.select(); toast('Select and copy manually');});
 }
 
 function openExportModal(){
@@ -1743,7 +1864,7 @@ function openExportModal(){
   $('ex-date').value=getShootFrom()||new Date().toISOString().slice(0,10);
   S.exportFilter='all';
   var locsInList=[];
-  S.packList.forEach(function(i){ if(locsInList.indexOf(i.location)<0) locsInList.push(i.location); });
+  S.packList.forEach(function(i){if(locsInList.indexOf(i.location)<0) locsInList.push(i.location);});
   var btns='<button class="export-loc-opt active" data-loc="all">Complete kit</button>';
   locsInList.forEach(function(loc){ btns+='<button class="export-loc-opt" data-loc="'+esc(loc)+'">'+esc(loc)+'</button>'; });
   $('export-loc-btns').innerHTML=btns;
@@ -1752,7 +1873,6 @@ function openExportModal(){
     S.exportFilter=b.dataset.loc;
     $('export-loc-btns').querySelectorAll('[data-loc]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.loc===S.exportFilter);});
   };
-  // Show "Download all" only if there are multiple locations
   var allBtn=$('export-all-btn');
   if(allBtn) allBtn.style.display=locsInList.length>1?'':'none';
   var vf=$('ex-value-field'); if(vf) vf.style.display=S.mode==='admin'?'':'none';
@@ -1760,12 +1880,26 @@ function openExportModal(){
   setTimeout(function(){$('ex-name').focus();},50);
 }
 
-function pdfFilename(shootName,rawDate,locLabel){
-  var datePart='000000';
-  if(rawDate){ var p=rawDate.split('-'); if(p.length===3) datePart=p[0].slice(2)+p[1]+p[2]; }
-  var namePart=(shootName||'Gear List').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-  var locPart=locLabel==='Complete kit'?'':('_'+locLabel.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,''));
-  return datePart+'_'+namePart+locPart+'.pdf';
+function formatDateGB(iso){
+  return iso?new Date(iso+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
+}
+
+function runExport(){
+  var shootName=$('ex-name').value.trim()||'Shoot Pack List';
+  var rawFrom=$('ex-date').value;
+  var rawTo=getShootTo()||rawFrom;
+  if(rawTo<rawFrom) rawTo=rawFrom;
+  if(!$('shoot-name').value.trim()) $('shoot-name').value=shootName;
+  var dateFrom=formatDateGB(rawFrom)||formatDateGB(new Date().toISOString().slice(0,10));
+  var dateTo=rawTo&&rawTo!==rawFrom?formatDateGB(rawTo):'';
+  var shootDateStr=dateTo?dateFrom+' \u2013 '+dateTo:dateFrom;
+  var filter=S.exportFilter;
+  var items=filter==='all'?S.packList.slice():S.packList.filter(function(i){return i.location===filter;});
+  if(!items.length){ toast('No items for that location'); return; }
+  var locLabel=filter==='all'?'Complete kit':filter;
+  var inclVal=S.mode==='admin'&&$('ex-include-value')&&$('ex-include-value').checked;
+  closeModal('export-modal');
+  generatePDF(shootName,shootDateStr,rawFrom,locLabel,items,filter,inclVal);
 }
 
 function runExportAll(){
@@ -1775,11 +1909,10 @@ function runExportAll(){
   if(rawDateTo<rawDate) rawDateTo=rawDate;
   var dateFromStr=formatDateGB(rawDate)||formatDateGB(new Date().toISOString().slice(0,10));
   var dateToStr=rawDateTo&&rawDateTo!==rawDate?formatDateGB(rawDateTo):'';
-  var shootDate=dateToStr?dateFromStr+' – '+dateToStr:dateFromStr;
+  var shootDate=dateToStr?dateFromStr+' \u2013 '+dateToStr:dateFromStr;
   var locsInList=[];
   S.packList.forEach(function(i){if(locsInList.indexOf(i.location)<0) locsInList.push(i.location);});
   closeModal('export-modal');
-  // Download complete kit first, then each location with a small delay between
   var downloads=[{filter:'all',label:'Complete kit',items:S.packList.slice()}];
   locsInList.forEach(function(loc){
     var items=S.packList.filter(function(i){return i.location===loc;});
@@ -1796,25 +1929,13 @@ function runExportAll(){
   next();
   toast('Downloading '+(downloads.length)+' PDFs...');
 }
-function formatDateGB(iso){
-  return iso?new Date(iso+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
-}
-function runExport(){
-  var shootName=$('ex-name').value.trim()||'Shoot Pack List';
-  var rawFrom=$('ex-date').value;
-  var rawTo=getShootTo()||rawFrom;
-  if(rawTo<rawFrom) rawTo=rawFrom;
-  if(!$('shoot-name').value.trim()) $('shoot-name').value=shootName;
-  var dateFrom=formatDateGB(rawFrom)||formatDateGB(new Date().toISOString().slice(0,10));
-  var dateTo=rawTo&&rawTo!==rawFrom?formatDateGB(rawTo):'';
-  var shootDateStr=dateTo?dateFrom+' – '+dateTo:dateFrom;
-  var filter=S.exportFilter;
-  var items=filter==='all'?S.packList.slice():S.packList.filter(function(i){return i.location===filter;});
-  if(!items.length){ toast('No items for that location'); return; }
-  var locLabel=filter==='all'?'Complete kit':filter;
-  var inclVal=S.mode==='admin'&&$('ex-include-value')&&$('ex-include-value').checked;
-  closeModal('export-modal');
-  generatePDF(shootName,shootDateStr,rawFrom,locLabel,items,filter,inclVal);
+
+function pdfFilename(shootName,rawDate,locLabel){
+  var datePart='000000';
+  if(rawDate){ var p=rawDate.split('-'); if(p.length===3) datePart=p[0].slice(2)+p[1]+p[2]; }
+  var namePart=(shootName||'Gear List').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  var locPart=locLabel==='Complete kit'?'':('_'+locLabel.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,''));
+  return datePart+'_'+namePart+locPart+'.pdf';
 }
 
 function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeValue){
@@ -1822,7 +1943,7 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
     toast('Loading PDF library...');
     var s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s.onload=function(){generatePDF(shootName,shootDate,rawDate,locLabel,items,filter);};
+    s.onload=function(){generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeValue);};
     s.onerror=function(){toast('Could not load PDF library - check internet connection');};
     document.head.appendChild(s); return;
   }
@@ -1832,7 +1953,7 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
 
   doc.setFillColor(26,25,23); doc.rect(0,0,PW,34,'F');
   doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
-  var pdfTitle=filter==="all"?shootName.toUpperCase():(shootName+" ("+locLabel+")").toUpperCase();
+  var pdfTitle=filter==='all'?shootName.toUpperCase():(shootName+' ('+locLabel+')').toUpperCase();
   doc.text(pdfTitle,ML,13);
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(165,163,155);
   var createdBy=S.userName&&S.userName!=='Admin'?S.userName:'';
@@ -1849,29 +1970,26 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
   doc.text('NEN GEAR LIST GENERATOR   |   Created: '+mm+'/'+dd+'/'+yy+' '+hh+':'+min,ML,27);
 
   var y=44;
-  // List-level note below header
-  if(S.listNote&&S.listNote.trim()){
-    var lnLines=doc.splitTextToSize('Note: '+S.listNote.trim(),usableW);
-    doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(80,78,72);
-    lnLines.forEach(function(line){ if(y+4>PH-14){doc.addPage();y=18;} doc.text(line,ML,y); y+=4; });
-    y+=4;
-  }
   var pageBottom=PH-14;
   function checkPage(needed){ if(y+needed>pageBottom){ doc.addPage(); y=18; } }
 
-  // Location colour palette for pills (matches app)
+  if(S.listNote&&S.listNote.trim()){
+    var lnLines=doc.splitTextToSize('Note: '+S.listNote.trim(),usableW);
+    doc.setFont('helvetica','bolditalic'); doc.setFontSize(8); doc.setTextColor(160,40,30);
+    lnLines.forEach(function(line){ if(y+4>pageBottom){doc.addPage();y=18;} doc.text(line,ML,y); y+=4; });
+    y+=4;
+  }
+
   var LOC_PALS=[
-    {bg:[232,240,251],fg:[26,95,168]},
-    {bg:[230,242,233],fg:[42,107,58]},
-    {bg:[251,234,232],fg:[176,58,46]},
-    {bg:[254,243,226],fg:[138,87,0]},
-    {bg:[240,234,251],fg:[107,53,184]},
-    {bg:[230,247,247],fg:[26,122,122]}
+    {bg:[232,240,251],fg:[26,95,168]},{bg:[230,242,233],fg:[42,107,58]},
+    {bg:[251,234,232],fg:[176,58,46]},{bg:[254,243,226],fg:[138,87,0]},
+    {bg:[240,234,251],fg:[107,53,184]},{bg:[230,247,247],fg:[26,122,122]}
   ];
   function locPalIdx(loc){ var i=S.locations.indexOf(loc); return (i>=0?i:0)%LOC_PALS.length; }
 
+  var runningTotal=0;
+
   if(filter==='all'){
-    // Complete kit: group by category first, then location within each category
     var byCat={};
     items.forEach(function(item){
       var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
@@ -1879,7 +1997,15 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
       if(!byCat[cat][item.location]) byCat[cat][item.location]=[];
       byCat[cat][item.location].push(item);
     });
-    Object.keys(byCat).forEach(function(cat){
+    var catOrdPDF=sortedCategories();
+    var catKeysPDF=Object.keys(byCat);
+    catKeysPDF.sort(function(a,b){
+      var ai=catOrdPDF.indexOf(a),bi=catOrdPDF.indexOf(b);
+      if(ai<0&&bi<0) return a.localeCompare(b);
+      if(ai<0) return 1; if(bi<0) return -1;
+      return ai-bi;
+    });
+    catKeysPDF.forEach(function(cat){
       checkPage(9);
       doc.setFillColor(238,237,232); doc.rect(ML,y-4,usableW,7,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(95,93,88);
@@ -1889,35 +2015,37 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
           var subCount=(item.subitems||[]).length;
           var note=item.note&&item.note.trim();
           var noteLines=note?doc.splitTextToSize(note,usableW-12):[];
-          var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+4;
+          var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+(includeValue&&item.value?5:0)+4;
           checkPage(needed);
-          doc.setDrawColor(150,148,140); doc.setLineWidth(0.45);
-          doc.rect(ML,y-4,4,4);
-          var qtyNeeded=item.qtyNeeded||1;
-          // Draw location pill
+          doc.setDrawColor(150,148,140); doc.setLineWidth(0.45); doc.rect(ML,y-4,4,4);
           var pi=locPalIdx(item.location);
           var pbg=LOC_PALS[pi].bg; var pfg=LOC_PALS[pi].fg;
           var initial=item.location.trim().charAt(0).toUpperCase();
           var pillW=7;
-          doc.setFillColor(pbg[0],pbg[1],pbg[2]);
-          doc.roundedRect(ML+6,y-4.5,pillW,5,1,1,'F');
+          doc.setFillColor(pbg[0],pbg[1],pbg[2]); doc.roundedRect(ML+6,y-4.5,pillW,5,1,1,'F');
           doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(pfg[0],pfg[1],pfg[2]);
           doc.text(initial,ML+6+(pillW/2),y-1.2,{align:'center'});
-          // Item label after pill
+          var qtyNeeded=item.qtyNeeded||1;
           var itemLabel=qtyNeeded+'x  '+item.name;
           doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(26,25,23);
           doc.text(itemLabel,ML+6+pillW+2,y-0.5); y+=5;
           if(subCount>0){
             doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(115,112,105);
-            (item.subitems||[]).forEach(function(sub){ checkPage(4); doc.text('  -  '+sub,ML+6+pillW+2,y); y+=4; });
+            (item.subitems||[]).forEach(function(sub){
+            checkPage(4);
+            doc.setDrawColor(150,148,140); doc.setLineWidth(0.35); doc.rect(ML+6+pillW+2,y-3,3,3);
+            doc.text('  '+sub,ML+6+pillW+2+4,y); y+=4;
+          });
             y+=1;
           }
           if(noteLines.length>0){
-            doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
+            doc.setFont('helvetica','bolditalic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
             noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6+pillW+2,y); y+=4; });
             y+=1;
           }
           if(includeValue&&item.value){
+            var itemTotal=item.value*(qtyNeeded||1);
+            runningTotal+=itemTotal;
             doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,78,72);
             checkPage(4); doc.text('Replacement value: $'+Number(item.value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),ML+6+pillW+2,y); y+=4;
           }
@@ -1927,14 +2055,21 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
       y+=2;
     });
   } else {
-    // Single location: group by category, show loc header, no pill needed
     var byLoc={};
     items.forEach(function(item){
       var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
       if(!byLoc[cat]) byLoc[cat]=[];
       byLoc[cat].push(item);
     });
-    Object.keys(byLoc).forEach(function(cat){
+    var catOrdPDF2=sortedCategories();
+    var catKeysPDF2=Object.keys(byLoc);
+    catKeysPDF2.sort(function(a,b){
+      var ai=catOrdPDF2.indexOf(a),bi=catOrdPDF2.indexOf(b);
+      if(ai<0&&bi<0) return a.localeCompare(b);
+      if(ai<0) return 1; if(bi<0) return -1;
+      return ai-bi;
+    });
+    catKeysPDF2.forEach(function(cat){
       var catItems=byLoc[cat];
       checkPage(9);
       doc.setFillColor(238,237,232); doc.rect(ML,y-4,usableW,7,'F');
@@ -1944,25 +2079,30 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
         var subCount=(item.subitems||[]).length;
         var note=item.note&&item.note.trim();
         var noteLines=note?doc.splitTextToSize(note,usableW-12):[];
-        var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+4;
+        var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+(includeValue&&item.value?5:0)+4;
         checkPage(needed);
-        doc.setDrawColor(150,148,140); doc.setLineWidth(0.45);
-        doc.rect(ML,y-4,4,4);
+        doc.setDrawColor(150,148,140); doc.setLineWidth(0.45); doc.rect(ML,y-4,4,4);
         var qtyNeeded=item.qtyNeeded||1;
         var itemLabel=qtyNeeded+'x  '+item.name;
         doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(26,25,23);
         doc.text(itemLabel,ML+6,y-0.5); y+=5;
         if(subCount>0){
           doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(115,112,105);
-          (item.subitems||[]).forEach(function(sub){ checkPage(4); doc.text('  -  '+sub,ML+6,y); y+=4; });
+          (item.subitems||[]).forEach(function(sub){
+            checkPage(4);
+            doc.setDrawColor(150,148,140); doc.setLineWidth(0.35); doc.rect(ML+6,y-3,3,3);
+            doc.text('  '+sub,ML+6+4,y); y+=4;
+          });
           y+=1;
         }
         if(noteLines.length>0){
-          doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
+          doc.setFont('helvetica','bolditalic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
           noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6,y); y+=4; });
           y+=1;
         }
         if(includeValue&&item.value){
+          var itemTotal2=item.value*(qtyNeeded||1);
+          runningTotal+=itemTotal2;
           doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,78,72);
           checkPage(4); doc.text('Replacement value: $'+Number(item.value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),ML+6,y); y+=4;
         }
@@ -1972,19 +2112,15 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
     });
   }
 
-  // Replacement value total
-  if(includeValue){
-    var total=items.reduce(function(sum,item){return sum+(item.value&&item.qtyNeeded?(item.value*(item.qtyNeeded||1)):item.value?item.value:0);},0);
-    if(total>0){
-      checkPage(14);
-      y+=4;
-      doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,10,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
-      doc.text('Total replacement value',ML+3,y);
-      doc.text('$'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),PW-MR,y,{align:'right'});
-      y+=10;
-    }
+  if(includeValue&&runningTotal>0){
+    checkPage(14); y+=4;
+    doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,10,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
+    doc.text('Total replacement value',ML+3,y);
+    doc.text('$'+runningTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),PW-MR,y,{align:'right'});
+    y+=10;
   }
+
   var pageCount=doc.getNumberOfPages();
   for(var p=1;p<=pageCount;p++){
     doc.setPage(p);
@@ -2004,7 +2140,6 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
 });
 loadLocal();
 
-// Check for invite link in URL hash (#binid=xxx or #binid=xxx&name=yyy)
 (function(){
   var hash=window.location.hash;
   if(hash&&hash.indexOf('binid=')>=0){
@@ -2013,19 +2148,16 @@ loadLocal();
     if(params.binid){
       if($('viewer-bin-id')) $('viewer-bin-id').value=params.binid;
       setMode('viewer');
-      // Clear hash so it doesn't persist
       history.replaceState(null,'',window.location.pathname+window.location.search);
     }
   }
 })();
 
-// Set version on setup screen
-(function(){
-  var sv=$('setup-version'); if(sv) sv.textContent=VERSION;
-})();
+(function(){ var sv=$('setup-version'); if(sv) sv.textContent=VERSION; })();
 
 if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
   if(S.mode==='admin'){
+    if($('admin-name')) $('admin-name').value=S.userName||'';
     $('admin-key').value=S.apiKey||'';
     if($('bin-id-manual')) $('bin-id-manual').value=S.binId;
     $('bin-id-input').value=S.binId;
@@ -2035,12 +2167,8 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
     if($('viewer-bin-id')) $('viewer-bin-id').value=S.binId||'';
     setMode('viewer');
   }
-  // Auto-launch if fully configured
-  if(S.userName&&S.binId){
-    launchApp();
-  }
+  if(S.userName&&S.binId){ launchApp(); }
 } else {
-  // Default to viewer mode on fresh open
   setMode('viewer');
 }
 if(!navigator.onLine) setOnline(false);
