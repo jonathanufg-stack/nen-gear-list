@@ -23,6 +23,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px}
 .mode-btn{padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);font-family:inherit;transition:all .15s}
 .mode-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+.setup-card[data-mode="admin"] #viewer-setup,
+.setup-card[data-mode="viewer"] #admin-setup,
+.setup-card:not([data-mode]) #admin-setup { display:none; }
 .field{margin-bottom:14px}
 .field label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
 .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);outline:none}
@@ -224,7 +227,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <body>
 
 <div id="setup-screen">
-  <div class="setup-card">
+  <div class="setup-card" id="setup-card" data-mode="viewer">
     <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
       <h1 style="font-size:20px;font-weight:800;letter-spacing:-.03em;text-transform:uppercase">NEN Gear List Generator</h1>
       <span id="setup-version" style="font-size:11px;font-weight:500;color:var(--text3)"></span>
@@ -238,7 +241,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     </div>
 
     <!-- Team member panel (default) -->
-    <div id="viewer-setup" style="display:none">
+    <div id="viewer-setup">
       <div class="field"><label>First name</label>
         <input type="text" id="viewer-name" placeholder="e.g. Jamie" autocomplete="given-name" />
         <p class="hint">Must be unique — if your name is already taken you'll be asked to choose another.</p>
@@ -252,7 +255,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     </div>
 
     <!-- Admin panel (hidden by default) -->
-    <div id="admin-setup" style="display:none">
+    <div id="admin-setup">
       <div class="field"><label>First name</label>
         <input type="text" id="admin-name" placeholder="e.g. Jonathan" autocomplete="given-name" />
         <p class="hint">Used to identify who made changes. Must be unique — no two people can share the same name.</p>
@@ -525,11 +528,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
   <div class="modal">
     <h3>Import CSV</h3>
     <p class="modal-sub">Columns: name, location, category, qty, subitems. Subitems separated by semicolons. First row is header (skipped). Duplicate names are skipped.</p>
-    <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea></div>
-    <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeModal('csv-modal')">Cancel</button>
-      <button class="btn-co
-<script>
+    <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></t
+var VERSION = 'v1.5'
 var VERSION = 'v1.5';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
@@ -649,10 +649,9 @@ window.addEventListener('offline',function(){setOnline(false);});
 
 function setMode(m){
   S.mode=m;
-  $('mode-admin-btn').classList.toggle('active', m==='admin');
-  $('mode-viewer-btn').classList.toggle('active', m==='viewer');
-  $('admin-setup').style.display = m==='admin' ? '' : 'none';
-  $('viewer-setup').style.display = m==='viewer' ? '' : 'none';
+  var ab=$('mode-admin-btn'); if(ab) ab.classList.toggle('active', m==='admin');
+  var vb=$('mode-viewer-btn'); if(vb) vb.classList.toggle('active', m==='viewer');
+  var sc=$('setup-card'); if(sc) sc.dataset.mode=m;
 }
 
 async function adminConnect(){
@@ -753,7 +752,8 @@ function logout(){
   $('setup-screen').style.display='flex';
   S.packList=[]; S.myLists=[]; S.allLists=[]; S.activeListId=null; S.batchSelected=[];
   S.listNote=''; S.categoryOrder=[]; S._listModifiedAt={};
-  S.userName=''; S.binId=''; S.mode='admin';
+  S.userName=''; S.binId=''; S.mode='viewer';
+  setMode('viewer');
 }
 
 async function launchApp(){
@@ -2193,6 +2193,7 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
 
 // ── Init ──
 // ── Init ──
+document.addEventListener('DOMContentLoaded', function(){
 ['nen3_binId','nen3_mode','nen3_apiKey','nen3_userName'].forEach(function(k){
   var v=localStorage.getItem(k);
   if(v==='undefined'||v==='null') localStorage.removeItem(k);
@@ -2231,6 +2232,7 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
   setMode('viewer');
 }
 if(!navigator.onLine) setOnline(false);
+}); // end DOMContentLoaded
 </script>
 </body>
 </html>
