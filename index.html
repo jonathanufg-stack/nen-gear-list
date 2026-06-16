@@ -222,24 +222,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
 <div id="setup-screen">
   <div class="setup-card">
-    <h1>NEN Gear List Generator</h1>
-    <p class="sub">Gear catalogue and shoot pack list tool for the NEN team.<br><span style="color:var(--amber);font-weight:600">Local mode — data saved in this browser only.</span></p>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+      <h1 style="font-size:20px;font-weight:800;letter-spacing:-.03em;text-transform:uppercase">NEN Gear List Generator</h1>
+      <span id="setup-version" style="font-size:11px;font-weight:500;color:var(--text3)"></span>
+    </div>
+    <p class="sub" style="margin-bottom:6px">NEN gear catalogue and gear list tool.</p>
+    <p id="setup-status" style="font-size:11px;font-weight:600;margin-bottom:20px;color:var(--green)">&#9679; Synced via JSONBin</p>
 
-    <div id="admin-setup">
-      <div class="setup-steps"><p>
-        <strong>Local storage mode.</strong><br>
-        All data is saved in this browser. Share the exported catalogue CSV with teammates so they can import it on their devices.
-      </p></div>
+    <div class="mode-toggle" style="margin-bottom:20px">
+      <button class="mode-btn" id="mode-admin-btn" onclick="setMode('admin')">&#128273; Admin</button>
+      <button class="mode-btn active" id="mode-viewer-btn" onclick="setMode('viewer')">&#128065; Team member</button>
+    </div>
+
+    <!-- Team member panel (default) -->
+    <div id="viewer-setup">
       <div class="field"><label>Your name</label>
-        <input type="text" id="admin-name" placeholder="e.g. Jonathan" />
+        <input type="text" id="viewer-name" placeholder="e.g. Jamie Chen" />
       </div>
-      <div class="field"><label>Role</label>
-        <select id="admin-role" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);outline:none">
-          <option value="admin">Admin (can edit catalogue)</option>
-          <option value="viewer">Team member (view &amp; build lists only)</option>
-        </select>
+      <div class="field"><label>Bin ID</label>
+        <input type="text" id="viewer-bin-id" placeholder="Paste the Bin ID from your admin" />
+        <p class="hint">Or use an invite link — ask your admin for one.</p>
       </div>
-      <button class="btn-primary" id="connect-btn" onclick="localConnect()">Open app</button>
+      <div id="viewer-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:var(--radius);padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
+      <button class="btn-primary" id="viewer-connect-btn" onclick="viewerConnect()">Open &#8594;</button>
+    </div>
+
+    <!-- Admin panel (hidden by default) -->
+    <div id="admin-setup" style="display:none">
+      <div class="setup-steps"><p>
+        <strong>First time? 2-minute setup:</strong><br>
+        1. Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and sign up free<br>
+        2. Click <strong>API Keys</strong> in the sidebar and copy your Master Key<br>
+        3. Paste it below and click Connect
+      </p></div>
+      <div class="field"><label>JSONBin Master Key</label>
+        <input type="password" id="admin-key" placeholder="$2a$10$..." />
+        <p class="hint">Stored only in this browser. Never shared.</p>
+      </div>
+      <div class="field"><label>Bin ID <span style="font-weight:400;color:var(--text3)">(paste existing to reconnect)</span></label>
+        <input type="text" id="bin-id-manual" placeholder="Leave blank to create a new catalogue" />
+        <p class="hint">Paste your existing Bin ID when updating the app so your catalogue is never lost.</p>
+      </div>
+      <div class="field" id="bin-id-field" style="display:none"><label>Bin ID</label>
+        <input type="text" id="bin-id-input" readonly onclick="this.select()" />
+      </div>
+      <div id="admin-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:var(--radius);padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
+      <button class="btn-primary" id="connect-btn" onclick="adminConnect()">Connect &amp; open &#8594;</button>
     </div>
   </div>
 </div>
@@ -251,11 +279,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <span class="user-tag" id="user-tag"></span>
     <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Synced</span></div>
     <button class="topbar-btn" onclick="manualSync()">Sync</button>
-    <button class="topbar-btn" id="share-btn" onclick="openModal('share-modal')">Share</button>
+    <button class="topbar-btn" id="share-btn" onclick="openInviteModal()" style="display:none">Invite team</button>
     <button class="topbar-btn" onclick="logout()">Log out</button>
   </div>
   <div class="banner banner-offline" id="offline-banner">Offline - working from cache. Will sync when reconnected.</div>
-  <div class="banner banner-conflict" id="conflict-banner" style="display:none"></div>
+  <div class="banner banner-conflict" id="conflict-banner">Catalogue updated elsewhere since your last sync. <button onclick="resolveConflict()">Reload</button></div>
 
   <div class="workspace">
     <div class="sidebar">
@@ -457,11 +485,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
 <div class="modal-overlay" id="share-modal" style="display:none" onclick="if(event.target===this)closeModal('share-modal')">
   <div class="modal">
-    <h3>Share catalogue</h3>
-    <p class="modal-sub">This app is in local mode — data lives in this browser only. To share the catalogue with teammates, export a CSV and have them import it on their device.</p>
+    <h3>Invite team member</h3>
+    <p class="modal-sub">Share this link with anyone who needs access. They'll go straight into the app as a team member — no Bin ID needed.</p>
+    <div class="field"><label>Invite link</label>
+      <input type="text" id="invite-link-input" readonly onclick="this.select()" style="font-size:11px;font-family:monospace;background:var(--surface2)" />
+    </div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeModal('share-modal')">Close</button>
-      <button class="btn-confirm" onclick="exportCSV();closeModal('share-modal')">Export catalogue CSV</button>
+      <button class="btn-confirm" onclick="copyInviteLink()">Copy link</button>
     </div>
   </div>
 </div>
@@ -494,7 +525,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-var VERSION = 'v1.3-local';
+var VERSION = 'v1.3';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -571,20 +602,101 @@ function pal(loc){ var i=S.locations.indexOf(loc); return PALS[(i>=0?i:0)%PALS.l
 function locShort(n){ return n.split(/\s+/).map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,3)||'?'; }
 function pillHTML(loc){ var p=pal(loc); return '<span class="loc-pill" style="background:'+p.bg+';color:'+p.fg+'">'+esc(locShort(loc))+'</span>'; }
 
-function setOnline(online){ S.isOnline=online; } // local mode - no network dependency
+function setOnline(online){
+  S.isOnline=online;
+  $('offline-banner').style.display=online?'none':'flex';
+  if(online && hasPending()){ pushToJSONBin().then(function(){syncAll(true);}); }
+  else if(online){ syncAll(true); }
+}
 window.addEventListener('online',function(){setOnline(true);});
 window.addEventListener('offline',function(){setOnline(false);});
 
-function setMode(m){ S.mode=m; } // simplified in local mode
+function setMode(m){
+  S.mode=m;
+  $('mode-admin-btn').classList.toggle('active', m==='admin');
+  $('mode-viewer-btn').classList.toggle('active', m==='viewer');
+  $('admin-setup').style.display = m==='admin' ? '' : 'none';
+  $('viewer-setup').style.display = m==='viewer' ? '' : 'none';
+}
 
-async function localConnect(){
-  var name=($('admin-name')&&$('admin-name').value.trim())||'';
-  var role=($('admin-role')&&$('admin-role').value)||'admin';
-  if(!name){ toast('Enter your name'); return; }
-  S.mode=role; S.userName=name; S.apiKey='';
-  // Use a fixed local bin ID so the catalogue persists across sessions
-  S.binId='local';
-  saveLocal(); await launchApp();
+async function adminConnect(){
+  var key=$('admin-key').value.trim();
+  if(!key){ showSetupError('admin','Paste your JSONBin Master Key first'); return; }
+  var btn=$('connect-btn'); btn.disabled=true; btn.textContent='Connecting…';
+  hideSetupError('admin');
+  try{
+    var rawStored=localStorage.getItem('nen3_binId')||'';
+    var storedBin=(rawStored&&rawStored!=='undefined'&&rawStored!=='null')?rawStored:'';
+    var manualBin=($('bin-id-manual')&&$('bin-id-manual').value.trim())||'';
+    var existing=(manualBin&&manualBin!=='undefined'&&manualBin!=='null')?manualBin:storedBin;
+    S.apiKey=key; S.mode='admin'; S.userName='Admin';
+    if(existing){
+      S.binId=existing; saveLocal();
+      var chk=await fetch(JSONBIN+'/b/'+existing+'/latest',{headers:{'X-Bin-Meta':'false','X-Master-Key':key}});
+      if(chk.ok){ await launchApp(); return; }
+      localStorage.removeItem('nen3_binId'); S.binId='';
+      showSetupError('admin','Could not connect to stored bin — creating a new catalogue…');
+      await new Promise(function(r){setTimeout(r,1200);});
+      hideSetupError('admin');
+    }
+    setSyncStatus('loading','Creating catalogue…');
+    var SAMPLE=[
+      {id:1,name:'Camera body',location:'Location A',category:'Camera',qty:2,subitems:['Battery x2','Charger','Body cap','Strap'],value:0},
+      {id:2,name:'24-70mm f/2.8 lens',location:'Location A',category:'Camera',qty:1,subitems:['Front cap','Rear cap','Filter ring'],value:0},
+      {id:3,name:'Strobe / flash',location:'Location A',category:'Lighting',qty:3,subitems:['Power cable','Sync cable','Carry bag'],value:0},
+      {id:4,name:'Tripod',location:'Location B',category:'Grip',qty:2,subitems:['Ball head','Quick release plate','Carry bag'],value:0},
+      {id:5,name:'Gimbal',location:'Location B',category:'Grip',qty:1,subitems:['Focus motor','Charging cable','Case'],value:0},
+    ];
+    var res=await fetch(JSONBIN+'/b',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'NENGearGen3','X-Bin-Private':'false'},
+      body:JSON.stringify({catalogue:SAMPLE,locations:['Location A','Location B'],categories:['Camera','Lighting','Grip'],categoryOrder:['Camera','Lighting','Grip'],nextId:6,teamLists:[],requests:[],updatedAt:Date.now()})
+    });
+    var data=await res.json();
+    if(!res.ok) throw new Error(data.message||'HTTP '+res.status);
+    var newId=data&&data.metadata&&data.metadata.id;
+    if(!newId) throw new Error('No bin ID returned — check your Master Key');
+    S.binId=newId; saveLocal();
+    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
+    await launchApp();
+  }catch(e){
+    setSyncStatus('error','Error');
+    showSetupError('admin','Could not connect: '+e.message);
+  }finally{
+    btn.disabled=false; btn.textContent='Connect & open →';
+  }
+}
+
+async function viewerConnect(){
+  var name=$('viewer-name').value.trim();
+  var binId=$('viewer-bin-id').value.trim();
+  if(!name){ showSetupError('viewer','Please enter your name'); return; }
+  if(!binId){ showSetupError('viewer','Enter the Bin ID from your admin'); return; }
+  hideSetupError('viewer');
+  var btn=$('viewer-connect-btn'); btn.disabled=true; btn.textContent='Connecting…';
+  try{
+    // Test the bin before launching
+    var test=await fetch(JSONBIN+'/b/'+binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
+    if(!test.ok) throw new Error('Bin not found or not accessible (HTTP '+test.status+')');
+    var data=await test.json();
+    var rec=data.record||data;
+    if(!rec||!rec.catalogue) throw new Error('This Bin ID does not look like a NEN Gear catalogue');
+    S.mode='viewer'; S.apiKey=''; S.binId=binId; S.userName=name;
+    saveLocal(); await launchApp();
+  }catch(e){
+    showSetupError('viewer','Could not connect: '+e.message+'. Check the Bin ID and try again.');
+  }finally{
+    btn.disabled=false; btn.textContent='Open →';
+  }
+}
+
+function showSetupError(panel, msg){
+  var el=$(panel==='admin'?'admin-error':'viewer-error');
+  if(el){ el.textContent=msg; el.style.display=''; }
+}
+function hideSetupError(panel){
+  var el=$(panel==='admin'?'admin-error':'viewer-error');
+  if(el) el.style.display='none';
 }
 
 
@@ -607,7 +719,7 @@ async function launchApp(){
   $('user-tag').textContent=S.userName||'';
   $('admin-tools').style.display=adm?'':'none';
   $('viewer-tools').style.display=adm?'none':'';
-  $('share-btn').style.display='';
+  $('share-btn').style.display=S.mode==='admin'?'':'none';
   $('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
@@ -626,21 +738,28 @@ function setSyncStatus(st,label){
 }
 
 async function syncAll(silent){
-  // Local mode: just read from localStorage
+  if(!navigator.onLine){ setSyncStatus('offline','Offline'); $('offline-banner').style.display='flex'; return; }
   $('offline-banner').style.display='none';
+  if(!silent) setSyncStatus('loading','Syncing…');
   try{
-    var raw=localStorage.getItem('nen3_db_'+S.binId);
-    if(raw){
-      var rec=JSON.parse(raw);
-      if(rec&&typeof rec==='object'){
-        applyBinData(rec);
-        S.cachedBinData=rec;
-      }
+    var headers={'X-Bin-Meta':'false'};
+    if(S.apiKey) headers['X-Master-Key']=S.apiKey;
+    var res=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:headers});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    var rec=data.record||data;
+    if(!rec||typeof rec!=='object') throw new Error('Unexpected response');
+    var remoteTs=rec.updatedAt||0;
+    if(S.lastSyncedAt>0&&S.remoteUpdatedAt>0&&remoteTs>S.remoteUpdatedAt){
+      $('conflict-banner').style.display='flex';
     }
-    setSyncStatus('ok','Local');
+    S.remoteUpdatedAt=remoteTs; S.lastSyncedAt=Date.now();
+    applyBinData(rec);
+    S.cachedBinData=rec; saveCacheLocal(); setSyncStatus('ok','Synced');
   }catch(e){
-    setSyncStatus('error','Load failed');
-    if(!silent) toast('Could not load data: '+e.message);
+    setSyncStatus('error','Sync failed');
+    if(!silent) toast('Sync failed: '+e.message);
+    if(S.cachedBinData) applyBinData(S.cachedBinData);
   }
 }
 
@@ -676,29 +795,47 @@ function resolveConflict(){ $('conflict-banner').style.display='none'; syncAll()
 async function manualSync(){ $('conflict-banner').style.display='none'; await syncAll(); }
 
 async function saveBin(){
-  // Local mode: write entire catalogue to localStorage
+  if(S.mode!=='admin') return;
+  if(!navigator.onLine){ markPending(); toast('Offline — will sync when reconnected'); return; }
+  setSyncStatus('loading','Saving…');
   try{
     var payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,categoryOrder:S.categoryOrder,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,updatedAt:Date.now()};
-    localStorage.setItem('nen3_db_'+S.binId, JSON.stringify(payload));
+    var res=await fetch(JSONBIN+'/b/'+S.binId,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':S.apiKey},
+      body:JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    S.remoteUpdatedAt=payload.updatedAt; S.lastSyncedAt=Date.now();
+    S.cachedBinData=payload; saveCacheLocal(); clearPending();
     S.allLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
     setSyncStatus('ok','Saved');
-  }catch(e){ setSyncStatus('error','Save failed'); toast('Save failed - storage may be full: '+e.message); }
+  }catch(e){ setSyncStatus('error','Save failed'); markPending(); toast('Save failed: '+e.message); }
 }
 
 async function pushToJSONBin(){
-  // Local mode: merge own lists into shared db then save
+  if(!navigator.onLine){ markPending(); toast('Saved locally — will sync when reconnected'); return; }
+  if(S.mode==='admin'){ await saveBin(); return; }
+  setSyncStatus('loading','Saving…');
   try{
-    var raw=localStorage.getItem('nen3_db_'+S.binId);
-    var rec=raw?JSON.parse(raw):{catalogue:S.catalogue,locations:S.locations,categories:S.categories,nextId:S.nextId,teamLists:[],requests:[],updatedAt:0};
+    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
+    if(!getRes.ok) throw new Error('HTTP '+getRes.status);
+    var data=await getRes.json(); var rec=data.record||data;
     var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
     var merged=otherLists.concat(S.myLists);
     var myReqs=S.requests.filter(function(r){return r.requester===S.userName;});
     var otherReqs=(rec.requests||[]).filter(function(r){return r.requester!==S.userName;});
-    rec.teamLists=merged; rec.requests=otherReqs.concat(myReqs); rec.categoryOrder=S.categoryOrder; rec.updatedAt=Date.now();
-    localStorage.setItem('nen3_db_'+S.binId, JSON.stringify(rec));
+    var body=Object.assign({},rec,{teamLists:merged,requests:otherReqs.concat(myReqs),categoryOrder:S.categoryOrder,updatedAt:Date.now()});
+    var putRes=await fetch(JSONBIN+'/b/'+S.binId,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    if(!putRes.ok) throw new Error('HTTP '+putRes.status);
+    setSyncStatus('ok','Synced'); clearPending();
     S.myLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
-    setSyncStatus('ok','Saved'); toast('Saved');
-  }catch(e){ setSyncStatus('error','Save failed'); toast('Save failed: '+e.message); }
+    toast('Saved & synced');
+  }catch(e){ setSyncStatus('error','Sync failed'); markPending(); toast('Saved locally — will retry'); }
 }
 
 function renderFilters(){
@@ -1368,7 +1505,11 @@ function openModal(id){
     if(!S.categoryOrder.length) S.categoryOrder=sortedCategories();
     renderCatTags();
   }
-  if(id==='share-modal'&&$('share-bin-id')) $('share-bin-id').value=S.binId||'';
+  if(id==='share-modal'){
+    var base=window.location.href.split('#')[0];
+    var link=base+'#binid='+encodeURIComponent(S.binId);
+    if($('invite-link-input')) $('invite-link-input').value=link;
+  }
 }
 function closeModal(id){ $(id).style.display='none'; }
 
@@ -1570,7 +1711,15 @@ async function addFromRequest(reqId){
   openItemModal(null); setTimeout(function(){$('m-name').value=req.name;},60);
 }
 
-function copyBinId(){ navigator.clipboard.writeText(S.binId).then(function(){toast('Bin ID copied!');}).catch(function(){toast('Select and copy manually');}); }
+function openInviteModal(){ openModal('share-modal'); }
+function copyInviteLink(){
+  var inp=$('invite-link-input');
+  var link=inp?inp.value:'';
+  if(!link) return;
+  navigator.clipboard.writeText(link).then(function(){toast('Invite link copied!');}).catch(function(){
+    if(inp){inp.select();} toast('Select and copy manually');
+  });
+}
 
 function openExportModal(){
   if(!S.packList.length){ toast('Add some gear first'); return; }
@@ -1832,15 +1981,53 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
 }
 
 // ── Init ──
-// Auto-restore session if previously logged in
+// ── Init ──
+['nen3_binId','nen3_mode','nen3_apiKey','nen3_userName'].forEach(function(k){
+  var v=localStorage.getItem(k);
+  if(v==='undefined'||v==='null') localStorage.removeItem(k);
+});
 loadLocal();
-if(S.userName&&S.binId==='local'){
-  launchApp();
+
+// Check for invite link in URL hash (#binid=xxx or #binid=xxx&name=yyy)
+(function(){
+  var hash=window.location.hash;
+  if(hash&&hash.indexOf('binid=')>=0){
+    var params={};
+    hash.slice(1).split('&').forEach(function(p){ var kv=p.split('='); if(kv.length===2) params[kv[0]]=decodeURIComponent(kv[1]); });
+    if(params.binid){
+      if($('viewer-bin-id')) $('viewer-bin-id').value=params.binid;
+      setMode('viewer');
+      // Clear hash so it doesn't persist
+      history.replaceState(null,'',window.location.pathname+window.location.search);
+    }
+  }
+})();
+
+// Set version on setup screen
+(function(){
+  var sv=$('setup-version'); if(sv) sv.textContent=VERSION;
+})();
+
+if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
+  if(S.mode==='admin'){
+    $('admin-key').value=S.apiKey||'';
+    if($('bin-id-manual')) $('bin-id-manual').value=S.binId;
+    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
+    setMode('admin');
+  } else {
+    if($('viewer-name')) $('viewer-name').value=S.userName||'';
+    if($('viewer-bin-id')) $('viewer-bin-id').value=S.binId||'';
+    setMode('viewer');
+  }
+  // Auto-launch if fully configured
+  if(S.userName&&S.binId){
+    launchApp();
+  }
 } else {
-  // Pre-fill name if stored
-  if(S.userName&&$('admin-name')) $('admin-name').value=S.userName;
-  if(S.mode&&$('admin-role')) $('admin-role').value=S.mode;
+  // Default to viewer mode on fresh open
+  setMode('viewer');
 }
+if(!navigator.onLine) setOnline(false);
 </script>
 </body>
 </html>
