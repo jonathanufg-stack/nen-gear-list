@@ -849,7 +849,10 @@ async function syncAll(silent){
     var rec=data.record||data;
     if(!rec||typeof rec!=='object') throw new Error('Unexpected response');
     var remoteTs=rec.updatedAt||0;
-    if(S.lastSyncedAt>0&&S.remoteUpdatedAt>0&&remoteTs>S.remoteUpdatedAt){
+    var remoteCatVer=rec.catalogueVersion||0;
+    // Only show catalogue conflict banner if the catalogue itself changed
+    // (catalogueVersion only increments on admin saveBin, not on list/user saves)
+    if(S.lastSyncedAt>0&&S.catalogueVersion>0&&remoteCatVer>S.catalogueVersion){
       $('conflict-banner').style.display='flex';
     }
     S.remoteUpdatedAt=remoteTs; S.lastSyncedAt=Date.now();
