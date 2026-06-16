@@ -75,6 +75,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .cat-list{flex:1;overflow-y:auto}
 .cat-item{padding:8px 14px;border-bottom:1px solid var(--border);transition:background .1s}
 .cat-item:hover{background:var(--surface2)}
+.cat-item.drag-over-cat-item{outline:2px dashed var(--blue);background:var(--blue-bg)}
+.cat-item.dragging{opacity:.35}
 .cat-item.in-list{background:var(--green-bg)}
 .cat-item.in-list:hover{background:#d5ecd9}
 .cat-item.unavail{opacity:.5}
@@ -526,15 +528,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeModal('csv-modal')">Cancel</button>
-      <button class="btn-confirm" onclick="importCSV()">Import</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
+      <button class="btn-co
 <script>
-var VERSION = 'v1.4';
+var VERSION = 'v1.5';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -558,6 +554,7 @@ var S = {
   _approvingAction:null,
 };
 var JSONBIN = 'https://api.jsonbin.io/v3';
+var catDragSrcId=null; // catalogue item drag source id (separate from pack list drag)
 
 // Check if a name is already taken by another active user in the bin
 // Returns null if available, or the conflicting role string if taken
@@ -992,6 +989,13 @@ function renderCatalogue(){
   });
   var allRows='';
   catKeys3.forEach(function(cat){
+    // Sort items within category by sortOrder, then name as fallback
+    byCat3[cat].sort(function(a,b){
+      var as=a.sortOrder!=null?a.sortOrder:9999;
+      var bs=b.sortOrder!=null?b.sortOrder:9999;
+      if(as!==bs) return as-bs;
+      return a.name.localeCompare(b.name);
+    });
     allRows+='<div class="cat-group-header">'+esc(cat)+'</div>';
     byCat3[cat].forEach(function(item){
       var inListItem=S.packList.find(function(p){return p.id===item.id;});
@@ -1015,8 +1019,14 @@ function renderCatalogue(){
       var qtyHTML=qty>1&&!fullyBooked?'<div class="cat-qty-row"><label>Qty needed:</label><select class="qty-select" data-qtyid="'+item.id+'">'+qtyOpts+'</select></div>':'';
       var addLabel=inListItem?'In list':fullyBooked?'Booked':'+ Add';
       var isAdmin=S.mode==='admin';
-      allRows+='<div class="cat-item'+(inListItem?' in-list':'')+(fullyBooked?' unavail':'')+'" data-id="'+item.id+'">'
+      var dragAttrs=isAdmin?' draggable="true"'
+        +' ondragstart="catDragStart(event,'+item.id+')"'
+        +' ondragover="catDragOver(event,'+item.id+')"'
+        +' ondrop="catDragDrop(event,'+item.id+')"'
+        +' ondragend="catDragEnd(event)"':'';
+      allRows+='<div class="cat-item'+(inListItem?' in-list':'')+(fullyBooked?' unavail':'')+'"'+dragAttrs+' data-id="'+item.id+'">'
         +'<div class="cat-item-top">'
+        +(isAdmin?'<span class="cat-drag-handle-inline" title="Drag to reorder">&#8286;</span>':'')
         +'<input type="checkbox" class="cat-check"'+(checked?' checked':'')+(fullyBooked?' disabled':'')+' data-checkid="'+item.id+'" />'
         +'<span class="cat-name" data-editid="'+(isAdmin?item.id:-1)+'">'+esc(item.name)+'</span>'
         +'<span class="loc-pill" style="background:'+cv.bg+';color:'+cv.fg+'">'+esc(locShort(item.location))+'</span>'
@@ -1188,6 +1198,51 @@ function renderList(){
   scroll.innerHTML=html;
 }
 
+// ── Catalogue item drag-to-reorder (admin only) ──────────────────────────
+function catDragStart(e,itemId){
+  catDragSrcId=itemId;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function catDragOver(e,itemId){
+  e.preventDefault();
+  document.querySelectorAll('.cat-item').forEach(function(r){r.classList.remove('drag-over-cat-item');});
+  e.currentTarget.classList.add('drag-over-cat-item');
+}
+async function catDragDrop(e,targetId){
+  e.preventDefault();
+  document.querySelectorAll('.cat-item').forEach(function(r){r.classList.remove('drag-over-cat-item');});
+  if(!catDragSrcId||catDragSrcId===targetId) return;
+  var src=S.catalogue.find(function(i){return i.id===catDragSrcId;});
+  var tgt=S.catalogue.find(function(i){return i.id===targetId;});
+  if(!src||!tgt||src.category!==tgt.category) return; // only within same category
+  // Collect category items in display order
+  var catItems=S.catalogue.filter(function(i){return i.category===src.category;});
+  catItems.sort(function(a,b){
+    var as=a.sortOrder!=null?a.sortOrder:9999;
+    var bs=b.sortOrder!=null?b.sortOrder:9999;
+    return as!==bs?as-bs:a.name.localeCompare(b.name);
+  });
+  var srcIdx=catItems.findIndex(function(i){return i.id===catDragSrcId;});
+  var tgtIdx=catItems.findIndex(function(i){return i.id===targetId;});
+  if(srcIdx<0||tgtIdx<0) return;
+  catItems.splice(srcIdx,1); catItems.splice(tgtIdx,0,src);
+  // Write new sortOrder values back to catalogue
+  catItems.forEach(function(item,i){
+    var ci=S.catalogue.findIndex(function(x){return x.id===item.id;});
+    if(ci>=0) S.catalogue[ci].sortOrder=i+1;
+  });
+  catDragSrcId=null;
+  renderCatalogue();
+  await saveBin();
+}
+function catDragEnd(e){
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.cat-item').forEach(function(r){r.classList.remove('drag-over-cat-item');});
+  catDragSrcId=null;
+}
+
+// ── Pack list drag-to-reorder ─────────────────────────────────────────────
 function dragStart(e,idx){ dragSrcIdx=idx; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
 function dragOver(e,idx){ e.preventDefault(); document.querySelectorAll('.list-row').forEach(function(r){r.classList.remove('drag-over');}); e.currentTarget.classList.add('drag-over'); }
 function dragDrop(e,idx){ e.preventDefault(); if(dragSrcIdx===null||dragSrcIdx===idx) return; var moved=S.packList.splice(dragSrcIdx,1)[0]; S.packList.splice(idx,0,moved); dragSrcIdx=null; renderList(); }
@@ -1686,7 +1741,9 @@ async function saveItem(){
     var pi=S.packList.findIndex(function(x){return x.id===S.editingId;});
     if(pi>=0) S.packList[pi]=Object.assign({},S.packList[pi],{name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
   } else {
-    S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
+    var catItems=S.catalogue.filter(function(x){return x.category===category;});
+    var maxSort=catItems.reduce(function(m,x){return Math.max(m,x.sortOrder||0);},0);
+    S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems,value:value,sortOrder:maxSort+1});
   }
   closeItemModal(); renderCatalogue(); renderList(); await saveBin();
 }
@@ -1809,7 +1866,9 @@ async function importCSV(){
     var loc=S.locations.includes(location)?location:S.locations[0];
     var cat=S.categories.includes(category)?category:'(none)';
     var subitems=subsRaw?subsRaw.split(';').map(function(s){return s.trim();}).filter(Boolean):[];
-    S.catalogue.push({id:S.nextId++,name:name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems:subitems,value:value});
+    var catItemsI=S.catalogue.filter(function(x){return x.category===cat;});
+    var maxSortI=catItemsI.reduce(function(m,x){return Math.max(m,x.sortOrder||0);},0);
+    S.catalogue.push({id:S.nextId++,name:name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems:subitems,value:value,sortOrder:maxSortI+1});
     added++;
   });
   closeModal('csv-modal'); renderCatalogue(); await saveBin();
