@@ -184,6 +184,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .add-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none}
 .add-row button{padding:7px 14px;border:none;border-radius:var(--radius);background:var(--text);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 .cat-tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.cat-drag-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:5px;cursor:grab;user-select:none}
+.cat-drag-row:active{cursor:grabbing}
+.cat-drag-row.drag-over-cat{outline:2px dashed var(--blue);background:var(--blue-bg)}
+.cat-drag-row.dragging-cat{opacity:.35}
+.cat-drag-handle{color:var(--text3);font-size:13px;flex-shrink:0}
+.cat-drag-name{flex:1;font-size:13px;font-weight:500;color:var(--text)}
+.cat-drag-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;line-height:1;padding:0 2px}
+.cat-drag-del:hover{color:var(--red)}
 .cat-tag{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:12px;color:var(--text2)}
 .cat-tag button{background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;line-height:1;padding:0}
 .cat-tag button:hover{color:var(--red)}
@@ -215,42 +223,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div id="setup-screen">
   <div class="setup-card">
     <h1>NEN Gear List Generator</h1>
-    <p class="sub">Shared gear catalogue and shoot pack list tool for the NEN team.</p>
-    <div class="mode-toggle">
-      <button class="mode-btn active" id="mode-admin-btn" onclick="setMode('admin')">&#128273; Admin</button>
-      <button class="mode-btn" id="mode-viewer-btn" onclick="setMode('viewer')">&#128065; Team member</button>
-    </div>
+    <p class="sub">Gear catalogue and shoot pack list tool for the NEN team.<br><span style="color:var(--amber);font-weight:600">Local mode — data saved in this browser only.</span></p>
+
     <div id="admin-setup">
       <div class="setup-steps"><p>
-        <strong>First time? 2-minute setup:</strong><br>
-        1. Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and sign up free<br>
-        2. Click <strong>API Keys</strong> in the sidebar and copy your Master Key<br>
-        3. Paste it below and click Connect
+        <strong>Local storage mode.</strong><br>
+        All data is saved in this browser. Share the exported catalogue CSV with teammates so they can import it on their devices.
       </p></div>
-      <div class="field"><label>JSONBin Master Key</label>
-        <input type="password" id="admin-key" placeholder="$2a$10$..." />
-        <p class="hint">Stored only in this browser. Never shared.</p>
-      </div>
-      <div class="field"><label>Bin ID <span style="font-weight:400;color:var(--text3)">(paste existing to reconnect)</span></label>
-        <input type="text" id="bin-id-manual" placeholder="Leave blank to create a new catalogue" />
-        <p class="hint">Paste your existing Bin ID here when updating the app so your catalogue is never lost.</p>
-      </div>
-      <div class="field" id="bin-id-field" style="display:none"><label>Bin ID</label>
-        <input type="text" id="bin-id-input" readonly onclick="this.select()" />
-        <p class="hint">Share this ID with team members.</p>
-      </div>
-      <button class="btn-primary" id="connect-btn" onclick="adminConnect()">Connect &amp; open</button>
-    </div>
-    <div id="viewer-setup" style="display:none">
-      <div class="setup-steps"><p><strong>Your admin will give you a Bin ID.</strong><br>Enter your name and the Bin ID to get started.</p></div>
       <div class="field"><label>Your name</label>
-        <input type="text" id="viewer-name" placeholder="e.g. Jamie Chen" />
-        <p class="hint">Appears on your saved lists and PDFs.</p>
+        <input type="text" id="admin-name" placeholder="e.g. Jonathan" />
       </div>
-      <div class="field"><label>Bin ID</label>
-        <input type="text" id="viewer-bin-id" placeholder="e.g. 6849f3a2e41b4d3e2f8a1c90" />
+      <div class="field"><label>Role</label>
+        <select id="admin-role" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);outline:none">
+          <option value="admin">Admin (can edit catalogue)</option>
+          <option value="viewer">Team member (view &amp; build lists only)</option>
+        </select>
       </div>
-      <button class="btn-primary" onclick="viewerConnect()">Open</button>
+      <button class="btn-primary" id="connect-btn" onclick="localConnect()">Open app</button>
     </div>
   </div>
 </div>
@@ -262,11 +251,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <span class="user-tag" id="user-tag"></span>
     <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Synced</span></div>
     <button class="topbar-btn" onclick="manualSync()">Sync</button>
-    <button class="topbar-btn" id="share-btn" onclick="openModal('share-modal')" style="display:none">Share</button>
+    <button class="topbar-btn" id="share-btn" onclick="openModal('share-modal')">Share</button>
     <button class="topbar-btn" onclick="logout()">Log out</button>
   </div>
   <div class="banner banner-offline" id="offline-banner">Offline - working from cache. Will sync when reconnected.</div>
-  <div class="banner banner-conflict" id="conflict-banner">Catalogue updated elsewhere since your last sync. <button onclick="resolveConflict()">Reload</button></div>
+  <div class="banner banner-conflict" id="conflict-banner" style="display:none"></div>
 
   <div class="workspace">
     <div class="sidebar">
@@ -353,6 +342,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="field"><label>Category</label><select id="m-cat"></select></div>
     <div class="field"><label>Total quantity available</label><input type="number" id="m-qty" min="1" value="1" /></div>
     <div class="field"><label>Sub-items (one per line)</label><textarea id="m-subs" placeholder="Battery x2&#10;Charger&#10;Body cap"></textarea></div>
+    <div class="field" id="m-value-field"><label>Replacement value (USD) <span style="font-size:10px;font-weight:400;color:var(--text3)">Admin only</span></label><input type="number" id="m-value" min="0" step="0.01" placeholder="0.00" /></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeItemModal()">Cancel</button>
       <button class="btn-secondary" id="item-dupe-btn" onclick="dupeItem()" style="display:none">Duplicate</button>
@@ -381,13 +371,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="modal-overlay" id="cat-modal" style="display:none" onclick="if(event.target===this)closeModal('cat-modal')">
   <div class="modal">
     <h3>Manage categories</h3>
-    <p class="modal-sub">Add or remove categories.</p>
-    <div class="cat-tag-list" id="cat-tag-list"></div>
+    <p class="modal-sub">Drag to reorder. Order is reflected throughout the app and in PDFs.</p>
+    <div id="cat-drag-list" style="margin-bottom:10px"></div>
     <div class="add-row">
       <input type="text" id="new-cat-input" placeholder="New category..." onkeydown="if(event.key==='Enter')addCategory()" />
       <button onclick="addCategory()">Add</button>
     </div>
-    <div class="modal-btns"><button class="btn-confirm" onclick="closeModal('cat-modal')">Done</button></div>
+    <div class="modal-btns"><button class="btn-confirm" onclick="saveCategoryOrder()">Done</button></div>
   </div>
 </div>
 
@@ -410,7 +400,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="field">
       <label>Shoot period</label>
       <div style="display:flex;gap:8px">
-        <input type="date" id="nlm-from" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none" />
+        <input type="date" id="nlm-from" oninput="var t=$('nlm-to');if(t&&(!t.value||t.value<this.value))t.value=this.value;" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none" />
         <input type="date" id="nlm-to" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none" />
       </div>
     </div>
@@ -451,6 +441,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="field"><label>Client / Project</label><input type="text" id="ex-name" /></div>
     <div class="field"><label>Shoot date</label><input type="date" id="ex-date" /></div>
     <div class="field"><label>Location filter</label><div class="export-loc-btns" id="export-loc-btns"></div></div>
+    <div class="field" id="ex-value-field" style="display:none">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0">
+        <input type="checkbox" id="ex-include-value" style="width:16px;height:16px;cursor:pointer" />
+        Include replacement values &amp; total
+      </label>
+    </div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeModal('export-modal')">Cancel</button>
       <button class="btn-secondary" onclick="runExportAll()" id="export-all-btn">Download all</button>
@@ -461,12 +457,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 
 <div class="modal-overlay" id="share-modal" style="display:none" onclick="if(event.target===this)closeModal('share-modal')">
   <div class="modal">
-    <h3>Share with team</h3>
-    <p class="modal-sub">Give team members this Bin ID. They choose Team member and paste it in.</p>
-    <div class="field"><label>Bin ID</label><input type="text" id="share-bin-id" readonly onclick="this.select()" style="font-family:monospace;font-size:13px" /></div>
+    <h3>Share catalogue</h3>
+    <p class="modal-sub">This app is in local mode — data lives in this browser only. To share the catalogue with teammates, export a CSV and have them import it on their device.</p>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeModal('share-modal')">Close</button>
-      <button class="btn-confirm" onclick="copyBinId()">Copy ID</button>
+      <button class="btn-confirm" onclick="exportCSV();closeModal('share-modal')">Export catalogue CSV</button>
     </div>
   </div>
 </div>
@@ -499,7 +494,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-var VERSION = 'v1.2';
+var VERSION = 'v1.3-local';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -512,11 +507,24 @@ var S = {
   lastSyncedAt:0, remoteUpdatedAt:0,
   cachedBinData:null, pendingWrite:false, autoSyncTimer:null,
   nextId:1, _pendingQty:{},
-  _pendingItems:null,   // items waiting for new-list confirmation
-  _conflictRemote:null, // remote list version for conflict resolution
-  _listModifiedAt:{},   // listId -> savedAt of last known remote version
+  _pendingItems:null,
+  _conflictRemote:null,
+  _listModifiedAt:{},
+  categoryOrder:[],     // admin-defined sort order for categories
+  listNote:'',          // list-level note for current list
 };
 var JSONBIN = 'https://api.jsonbin.io/v3';
+var DEFAULT_CAT_ORDER=['Camera','Lens','Lenses','Filters','Audio','Miscellaneous','Misc','Lighting','Light','Light Modifier','Grip'];
+function sortedCategories(){
+  var order=S.categoryOrder.length?S.categoryOrder:DEFAULT_CAT_ORDER;
+  return S.categories.slice().sort(function(a,b){
+    var ai=order.indexOf(a), bi=order.indexOf(b);
+    if(ai<0&&bi<0) return a.localeCompare(b);
+    if(ai<0) return 1;
+    if(bi<0) return -1;
+    return ai-bi;
+  });
+}
 
 function getShootFrom(){ return ($('shoot-date-from')&&$('shoot-date-from').value)||''; }
 function getShootTo(){ return ($('shoot-date-to')&&$('shoot-date-to').value)||''; }
@@ -563,81 +571,31 @@ function pal(loc){ var i=S.locations.indexOf(loc); return PALS[(i>=0?i:0)%PALS.l
 function locShort(n){ return n.split(/\s+/).map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,3)||'?'; }
 function pillHTML(loc){ var p=pal(loc); return '<span class="loc-pill" style="background:'+p.bg+';color:'+p.fg+'">'+esc(locShort(loc))+'</span>'; }
 
-function setOnline(online){
-  S.isOnline=online;
-  $('offline-banner').style.display=online?'none':'flex';
-  if(online && hasPending()){ pushToJSONBin().then(function(){syncAll(true);}); }
-  else if(online){ syncAll(true); }
-}
+function setOnline(online){ S.isOnline=online; } // local mode - no network dependency
 window.addEventListener('online',function(){setOnline(true);});
 window.addEventListener('offline',function(){setOnline(false);});
 
-function setMode(m){
-  S.mode=m;
-  $('mode-admin-btn').classList.toggle('active',m==='admin');
-  $('mode-viewer-btn').classList.toggle('active',m==='viewer');
-  $('admin-setup').style.display=m==='admin'?'':'none';
-  $('viewer-setup').style.display=m==='viewer'?'':'none';
-}
+function setMode(m){ S.mode=m; } // simplified in local mode
 
-async function adminConnect(){
-  var key=$('admin-key').value.trim();
-  if(!key){ toast('Paste your JSONBin Master Key first'); return; }
-  var btn=$('connect-btn'); btn.disabled=true; btn.textContent='Connecting...';
-  try{
-    var rawStored=localStorage.getItem('nen3_binId')||'';
-    var storedBin=(rawStored&&rawStored!=='undefined'&&rawStored!=='null')?rawStored:'';
-    var manualBin=($('bin-id-manual')&&$('bin-id-manual').value.trim())||'';
-    var existing=(manualBin&&manualBin!=='undefined'&&manualBin!=='null')?manualBin:storedBin;
-    S.apiKey=key; S.mode='admin'; S.userName='Admin';
-    if(existing){
-      S.binId=existing; saveLocal();
-      var chk=await fetch(JSONBIN+'/b/'+existing+'/latest',{headers:{'X-Bin-Meta':'false','X-Master-Key':key}});
-      if(chk.ok){ await launchApp(); return; }
-      localStorage.removeItem('nen3_binId'); S.binId='';
-      toast('Stored bin invalid - creating a new catalogue...');
-    }
-    setSyncStatus('loading','Creating catalogue...');
-    var SAMPLE=[
-      {id:1,name:'Camera body',location:'Location A',category:'Camera',qty:2,subitems:['Battery x2','Charger','Body cap','Strap']},
-      {id:2,name:'24-70mm f/2.8 lens',location:'Location A',category:'Camera',qty:1,subitems:['Front cap','Rear cap','Filter ring']},
-      {id:3,name:'Strobe / flash',location:'Location A',category:'Lighting',qty:3,subitems:['Power cable','Sync cable','Carry bag']},
-      {id:4,name:'Tripod',location:'Location B',category:'Grip',qty:2,subitems:['Ball head','Quick release plate','Carry bag']},
-      {id:5,name:'Gimbal',location:'Location B',category:'Grip',qty:1,subitems:['Focus motor','Charging cable','Case']},
-    ];
-    var res=await fetch(JSONBIN+'/b',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'NENGearGen3','X-Bin-Private':'false'},
-      body:JSON.stringify({catalogue:SAMPLE,locations:['Location A','Location B'],categories:['Camera','Lighting','Grip'],nextId:6,teamLists:[],requests:[],updatedAt:Date.now()})
-    });
-    var data=await res.json();
-    if(!res.ok) throw new Error(data.message||'HTTP '+res.status);
-    var newId=data&&data.metadata&&data.metadata.id;
-    if(!newId) throw new Error('No bin ID returned - check your Master Key');
-    S.binId=newId; saveLocal();
-    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
-    await launchApp();
-  }catch(e){
-    setSyncStatus('error','Error'); toast('Could not connect: '+e.message);
-  }finally{
-    btn.disabled=false; btn.textContent='Connect & open';
-  }
-}
-
-async function viewerConnect(){
-  var name=$('viewer-name').value.trim();
-  var binId=$('viewer-bin-id').value.trim();
-  if(!name){ toast('Please enter your name'); return; }
-  if(!binId){ toast('Enter the Bin ID from your admin'); return; }
-  S.mode='viewer'; S.apiKey=''; S.binId=binId; S.userName=name;
+async function localConnect(){
+  var name=($('admin-name')&&$('admin-name').value.trim())||'';
+  var role=($('admin-role')&&$('admin-role').value)||'admin';
+  if(!name){ toast('Enter your name'); return; }
+  S.mode=role; S.userName=name; S.apiKey='';
+  // Use a fixed local bin ID so the catalogue persists across sessions
+  S.binId='local';
   saveLocal(); await launchApp();
 }
 
+
+
 function logout(){
-  clearInterval(S.autoSyncTimer);
+  clearInterval(S.autoSyncTimer); S.autoSyncTimer=null;
   $('app-screen').style.display='none';
   $('setup-screen').style.display='flex';
   S.packList=[]; S.myLists=[]; S.allLists=[]; S.activeListId=null; S.batchSelected=[];
+  S.listNote=''; S.categoryOrder=[]; S._listModifiedAt={};
+  S.userName=''; S.binId=''; S.mode='admin';
 }
 
 async function launchApp(){
@@ -649,7 +607,7 @@ async function launchApp(){
   $('user-tag').textContent=S.userName||'';
   $('admin-tools').style.display=adm?'':'none';
   $('viewer-tools').style.display=adm?'none':'';
-  $('share-btn').style.display=adm?'':'none';
+  $('share-btn').style.display='';
   $('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
@@ -658,7 +616,7 @@ async function launchApp(){
   loadMyListsLocal(); loadCacheLocal();
   if(S.cachedBinData) applyBinData(S.cachedBinData);
   await syncAll();
-  S.autoSyncTimer=setInterval(function(){syncAll(true);},15000);
+  clearInterval(S.autoSyncTimer); S.autoSyncTimer=setInterval(function(){syncAll(true);},15000);
 }
 
 function setSyncStatus(st,label){
@@ -668,28 +626,21 @@ function setSyncStatus(st,label){
 }
 
 async function syncAll(silent){
-  if(!navigator.onLine){ setSyncStatus('offline','Offline'); $('offline-banner').style.display='flex'; return; }
+  // Local mode: just read from localStorage
   $('offline-banner').style.display='none';
-  if(!silent) setSyncStatus('loading','Syncing...');
   try{
-    var headers={'X-Bin-Meta':'false'};
-    if(S.apiKey) headers['X-Master-Key']=S.apiKey;
-    var res=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:headers});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    var data=await res.json();
-    var rec=data.record||data;
-    if(!rec||typeof rec!=='object') throw new Error('Unexpected response shape');
-    var remoteTs=rec.updatedAt||0;
-    if(S.lastSyncedAt>0&&S.remoteUpdatedAt>0&&remoteTs>S.remoteUpdatedAt){
-      $('conflict-banner').style.display='flex';
+    var raw=localStorage.getItem('nen3_db_'+S.binId);
+    if(raw){
+      var rec=JSON.parse(raw);
+      if(rec&&typeof rec==='object'){
+        applyBinData(rec);
+        S.cachedBinData=rec;
+      }
     }
-    S.remoteUpdatedAt=remoteTs; S.lastSyncedAt=Date.now();
-    applyBinData(rec);
-    S.cachedBinData=rec; saveCacheLocal(); setSyncStatus('ok','Synced');
+    setSyncStatus('ok','Local');
   }catch(e){
-    setSyncStatus('error','Sync failed');
-    if(!silent) toast('Sync failed: '+e.message);
-    if(S.cachedBinData) applyBinData(S.cachedBinData);
+    setSyncStatus('error','Load failed');
+    if(!silent) toast('Could not load data: '+e.message);
   }
 }
 
@@ -697,6 +648,7 @@ function applyBinData(rec){
   S.catalogue=rec.catalogue||[];
   S.locations=rec.locations||['Location A','Location B'];
   S.categories=rec.categories||['Camera','Lighting','Grip'];
+  S.categoryOrder=rec.categoryOrder||[];
   S.nextId=rec.nextId||S.catalogue.length+1;
   S.requests=rec.requests||[];
   var newLists=rec.teamLists||[];
@@ -724,49 +676,29 @@ function resolveConflict(){ $('conflict-banner').style.display='none'; syncAll()
 async function manualSync(){ $('conflict-banner').style.display='none'; await syncAll(); }
 
 async function saveBin(){
-  if(S.mode!=='admin') return;
-  if(!navigator.onLine){ markPending(); toast('Offline - will sync when reconnected'); return; }
-  setSyncStatus('loading','Saving...');
+  // Local mode: write entire catalogue to localStorage
   try{
-    var payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,updatedAt:Date.now()};
-    var res=await fetch(JSONBIN+'/b/'+S.binId,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json','X-Master-Key':S.apiKey},
-      body:JSON.stringify(payload)
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    S.remoteUpdatedAt=payload.updatedAt; S.lastSyncedAt=Date.now();
-    S.cachedBinData=payload; saveCacheLocal(); clearPending();
+    var payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,categoryOrder:S.categoryOrder,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,updatedAt:Date.now()};
+    localStorage.setItem('nen3_db_'+S.binId, JSON.stringify(payload));
     S.allLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
     setSyncStatus('ok','Saved');
-  }catch(e){ setSyncStatus('error','Save failed'); markPending(); toast('Save failed: '+e.message); }
+  }catch(e){ setSyncStatus('error','Save failed'); toast('Save failed - storage may be full: '+e.message); }
 }
 
 async function pushToJSONBin(){
-  if(!navigator.onLine){ markPending(); toast('Saved locally - will sync when reconnected'); return; }
-  if(S.mode==='admin'){ await saveBin(); return; }
-  setSyncStatus('loading','Saving...');
+  // Local mode: merge own lists into shared db then save
   try{
-    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
-    if(!getRes.ok) throw new Error('HTTP '+getRes.status);
-    var data=await getRes.json(); var rec=data.record||data;
+    var raw=localStorage.getItem('nen3_db_'+S.binId);
+    var rec=raw?JSON.parse(raw):{catalogue:S.catalogue,locations:S.locations,categories:S.categories,nextId:S.nextId,teamLists:[],requests:[],updatedAt:0};
     var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
     var merged=otherLists.concat(S.myLists);
     var myReqs=S.requests.filter(function(r){return r.requester===S.userName;});
     var otherReqs=(rec.requests||[]).filter(function(r){return r.requester!==S.userName;});
-    var mergedReqs=otherReqs.concat(myReqs);
-    var body=Object.assign({},rec,{teamLists:merged,requests:mergedReqs,updatedAt:Date.now()});
-    var putRes=await fetch(JSONBIN+'/b/'+S.binId,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    });
-    if(!putRes.ok) throw new Error('HTTP '+putRes.status);
-    setSyncStatus('ok','Synced'); clearPending();
-  // Update known-version timestamps for our lists
-  S.myLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
-  toast('Saved & synced');
-  }catch(e){ setSyncStatus('error','Sync failed'); markPending(); toast('Saved locally - will retry'); }
+    rec.teamLists=merged; rec.requests=otherReqs.concat(myReqs); rec.categoryOrder=S.categoryOrder; rec.updatedAt=Date.now();
+    localStorage.setItem('nen3_db_'+S.binId, JSON.stringify(rec));
+    S.myLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
+    setSyncStatus('ok','Saved'); toast('Saved');
+  }catch(e){ setSyncStatus('error','Save failed'); toast('Save failed: '+e.message); }
 }
 
 function renderFilters(){
@@ -783,7 +715,7 @@ function renderFilters(){
     if(b){ S.locFilter=b.dataset.loc; renderFilters(); renderCatalogue(); }
   };
   var ch='<button class="filter-chip'+(S.catFilter==='all'?' active':'')+'" data-cat="all">All</button>';
-  S.categories.forEach(function(cat){
+  sortedCategories().forEach(function(cat){
     ch+='<button class="filter-chip'+(S.catFilter===cat?' active':'')+'" data-cat="'+esc(cat)+'">'+esc(cat)+'</button>';
   });
   $('cat-filter-row').innerHTML=ch;
@@ -831,6 +763,14 @@ function renderCatalogue(){
   if(S.locFilter!=='all') items=items.filter(function(i){return i.location===S.locFilter;});
   if(S.catFilter!=='all') items=items.filter(function(i){return i.category===S.catFilter;});
   if(search) items=items.filter(function(i){return i.name.toLowerCase().includes(search)||(i.subitems||[]).some(function(s){return s.toLowerCase().includes(search);});});
+  var catOrd=sortedCategories();
+  items.sort(function(a,b){
+    var ai=catOrd.indexOf(a.category),bi=catOrd.indexOf(b.category);
+    if(ai<0&&bi<0) return (a.category||'').localeCompare(b.category||'');
+    if(ai<0) return 1; if(bi<0) return -1;
+    if(ai!==bi) return ai-bi;
+    return a.name.localeCompare(b.name);
+  });
   var list=$('cat-list');
   if(!items.length){ list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">'+(S.catalogue.length?'No matches':'No gear yet - add some below')+'</div>'; return; }
   list.innerHTML=items.map(function(item){
@@ -942,7 +882,7 @@ function updateListQty(itemId,qty){
 }
 function removeItem(itemId){ S.packList=S.packList.filter(function(p){return p.id!==itemId;}); renderCatalogue(); renderList(); }
 function clearList(){
-  S.packList=[]; S.activeListId=null; S.batchSelected=[]; S._pendingItems=null;
+  S.packList=[]; S.activeListId=null; S.batchSelected=[]; S._pendingItems=null; S.listNote='';
   $('shoot-name').value='';
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
@@ -957,22 +897,36 @@ function clearList(){
 var dragSrcIdx=null;
 function renderList(){
   $('count-label').textContent=S.packList.length+' item'+(S.packList.length!==1?'s':'')+' selected';
-  // Show date period in main header
   var hdr=$('list-period-label');
   if(hdr){
     var f=getShootFrom(), t=getShootTo();
     if(f){
       var df=new Date(f+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
       var dt=t&&t!==f?new Date(t+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
-      hdr.textContent=dt?df+' – '+dt:df;
-      hdr.style.display='';
+      hdr.textContent=dt?df+' – '+dt:df; hdr.style.display='';
     } else { hdr.style.display='none'; }
   }
   var scroll=$('list-scroll');
   if(!S.packList.length){ scroll.innerHTML='<div class="empty-list">Add gear from the catalogue</div>'; return; }
+
+  // List-level note at top
+  var noteHtml='<div style="padding:8px 0 6px">'
+    +'<textarea class="note-input" rows="2" id="list-note-field" placeholder="List notes (visible on PDF)..." oninput="S.listNote=this.value" style="width:100%;font-size:12px">'+esc(S.listNote||'')+'</textarea>'
+    +'</div>';
+
+  // Sort by category order
+  var catOrd2=sortedCategories();
+  var sorted=S.packList.map(function(item,i){return {item:item,idx:i};});
+  sorted.sort(function(a,b){
+    var ai=catOrd2.indexOf(a.item.category),bi=catOrd2.indexOf(b.item.category);
+    if(ai<0&&bi<0) return (a.item.category||'').localeCompare(b.item.category||'');
+    if(ai<0) return 1; if(bi<0) return -1;
+    return ai-bi;
+  });
   var byLoc={};
-  S.packList.forEach(function(item,i){ if(!byLoc[item.location]) byLoc[item.location]=[]; byLoc[item.location].push({item:item,idx:i}); });
-  var html='';
+  sorted.forEach(function(e){ if(!byLoc[e.item.location]) byLoc[e.item.location]=[]; byLoc[e.item.location].push(e); });
+
+  var html=noteHtml;
   Object.keys(byLoc).forEach(function(loc){
     var entries=byLoc[loc];
     html+='<div class="loc-section"><div class="loc-header-row">'+pillHTML(loc)+' '+esc(loc)+'</div>';
@@ -987,6 +941,9 @@ function renderList(){
       } else {
         qtyPart='<span style="font-size:10px;color:var(--text3)">x1</span>';
       }
+      var noteAreaHtml=item.noteOpen
+        ?'<textarea class="note-input" rows="2" placeholder="Add a note..." oninput="updateNote('+idx+',this.value)">'+esc(item.note||'')+'</textarea>'
+        :'<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ note')+'</button>';
       html+='<div class="list-row" draggable="true" data-idx="'+idx+'"'
         +' ondragstart="dragStart(event,'+idx+')" ondragover="dragOver(event,'+idx+')"'
         +' ondrop="dragDrop(event,'+idx+')" ondragend="dragEnd(event)">'
@@ -994,22 +951,45 @@ function renderList(){
         +'<div class="list-row-info">'
         +'<div class="list-row-name">'+esc(item.name)+' '+qtyPart+'</div>'
         +(item.subitems&&item.subitems.length?'<div class="list-row-subs">'+item.subitems.map(function(s){return '- '+esc(s);}).join('  ')+'</div>':'')
-        +(item.noteOpen
-          ?'<textarea class="note-input" rows="1" placeholder="Add a note..." oninput="updateNote('+idx+',this.value)">'+esc(item.note||'')+'</textarea>'
-          :'<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ note')+'</button>')
+        +'<div class="note-area">'+noteAreaHtml+'</div>'
         +'</div>'
-        +'<div class="list-row-actions"><button class="remove-btn" onclick="removeItem('+item.id+')">x</button></div>'
+        +'<div class="list-row-actions"><button class="remove-btn" onclick="removeItem('+item.id+')">&#10005;</button></div>'
         +'</div>';
     });
     html+='</div>';
   });
   scroll.innerHTML=html;
 }
+
 function dragStart(e,idx){ dragSrcIdx=idx; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
 function dragOver(e,idx){ e.preventDefault(); document.querySelectorAll('.list-row').forEach(function(r){r.classList.remove('drag-over');}); e.currentTarget.classList.add('drag-over'); }
 function dragDrop(e,idx){ e.preventDefault(); if(dragSrcIdx===null||dragSrcIdx===idx) return; var moved=S.packList.splice(dragSrcIdx,1)[0]; S.packList.splice(idx,0,moved); dragSrcIdx=null; renderList(); }
 function dragEnd(e){ e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.list-row').forEach(function(r){r.classList.remove('drag-over');}); }
-function toggleNote(idx){ S.packList[idx].noteOpen=!S.packList[idx].noteOpen; renderList(); }
+function toggleNote(idx){
+  S.packList[idx].noteOpen=!S.packList[idx].noteOpen;
+  // Patch just the note area without re-rendering the full list
+  var rows=document.querySelectorAll('.list-row');
+  var row=null;
+  for(var ri=0;ri<rows.length;ri++){
+    if(parseInt(rows[ri].dataset.sortidx)===idx||(rows[ri].dataset.idx&&parseInt(rows[ri].dataset.idx)===idx)){
+      row=rows[ri]; break;
+    }
+  }
+  if(!row){ renderList(); return; }
+  var noteArea=row.querySelector('.note-area');
+  if(noteArea){
+    var item=S.packList[idx];
+    if(item.noteOpen){
+      noteArea.innerHTML='<textarea class="note-input" rows="2" placeholder="Add a note..." oninput="updateNote('+idx+',this.value)">'+esc(item.note||'')+'</textarea>';
+      var ta=noteArea.querySelector('textarea');
+      if(ta){ ta.focus(); var len=ta.value.length; ta.setSelectionRange(len,len); }
+    } else {
+      noteArea.innerHTML='<button class="note-toggle" onclick="toggleNote('+idx+')">'+(item.note?'[note] '+esc(item.note):'+ note')+'</button>';
+    }
+  } else {
+    renderList();
+  }
+}
 function updateNote(idx,val){ S.packList[idx].note=val; }
 
 async function quickDeleteItem(itemId){
@@ -1025,7 +1005,7 @@ function selectAllCatalogue(){
   var items=S.catalogue.slice();
   if(S.locFilter!=='all') items=items.filter(function(i){return i.location===S.locFilter;});
   if(S.catFilter!=='all') items=items.filter(function(i){return i.category===S.catFilter;});
-  if(search) items=items.filter(function(i){return i.name.toLowerCase().includes(search);});
+  if(search) items=items.filter(function(i){return i.name.toLowerCase().includes(search)||(i.subitems||[]).some(function(s){return s.toLowerCase().includes(search);});});
   items.forEach(function(i){visibleIds.push(i.id);});
   var allSelected=visibleIds.every(function(id){return S.batchSelected.indexOf(id)>=0;});
   if(allSelected){
@@ -1043,8 +1023,16 @@ function selectAllCatalogue(){
 async function deleteSelectedItems(){
   if(!S.batchSelected.length) return;
   if(!confirm('Delete '+S.batchSelected.length+' item'+(S.batchSelected.length!==1?'s':'')+' from the catalogue? This cannot be undone.')) return;
-  S.catalogue=S.catalogue.filter(function(i){return S.batchSelected.indexOf(i.id)<0;});
-  S.packList=S.packList.filter(function(i){return S.batchSelected.indexOf(i.id)<0;});
+  var toDelete=S.batchSelected.slice();
+  S.catalogue=S.catalogue.filter(function(i){return toDelete.indexOf(i.id)<0;});
+  S.packList=S.packList.filter(function(i){return toDelete.indexOf(i.id)<0;});
+  // Also remove from all saved lists that are currently in memory
+  S.allLists=S.allLists.map(function(lst){
+    return Object.assign({},lst,{items:(lst.items||[]).filter(function(i){return toDelete.indexOf(i.id)<0;})});
+  });
+  S.myLists=S.myLists.map(function(lst){
+    return Object.assign({},lst,{items:(lst.items||[]).filter(function(i){return toDelete.indexOf(i.id)<0;})});
+  });
   S.batchSelected=[];
   $('batch-bar').style.display='none';
   $('delete-selected-btn').style.display='none';
@@ -1173,26 +1161,51 @@ async function keepMyList(){
   toast('Your version saved');
 }
 
+async function saveCategoryOrder(){
+  // Order is already updated live during drag; just persist and close
+  closeModal('cat-modal');
+  renderFilters(); renderCatalogue(); renderList();
+  await saveBin();
+}
+var _archiveOpen=false;
 function renderSavedLists(){
   var scroll=$('lists-scroll');
   var search=($('lists-search').value||'').toLowerCase();
   var isAdmin=S.mode==='admin';
+  var cutoff=Date.now()-30*24*60*60*1000;
   function matchSearch(lst){ if(!search) return true; return (lst.name||'').toLowerCase().includes(search)||(lst.shootName||'').toLowerCase().includes(search)||(lst.shootDate||'').includes(search); }
+  function splitLists(arr){
+    var recent=[],archived=[];
+    arr.forEach(function(l){ ((l.savedAt||0)<cutoff?archived:recent).push(l); });
+    return {recent:recent,archived:archived};
+  }
   if(isAdmin){
     var all=S.allLists.filter(matchSearch).slice().sort(function(a,b){
       var na=(a.owner||'').toLowerCase(),nb=(b.owner||'').toLowerCase();
       return na!==nb?na.localeCompare(nb):(b.savedAt||0)-(a.savedAt||0);
     });
     if(!all.length){ scroll.innerHTML='<div class="lists-empty">No team lists yet.</div>'; return; }
+    var sp=splitLists(all);
     var html=''; var lastOwner='';
-    all.forEach(function(lst){ if(lst.owner!==lastOwner){ html+='<div class="group-header">'+esc(lst.owner||'Unknown')+'</div>'; lastOwner=lst.owner; } html+=sliHTML(lst); });
+    sp.recent.forEach(function(lst){ if(lst.owner!==lastOwner){ html+='<div class="group-header">'+esc(lst.owner||'Unknown')+'</div>'; lastOwner=lst.owner; } html+=sliHTML(lst); });
+    if(sp.archived.length){
+      html+='<div class="group-header" style="cursor:pointer;color:var(--text3)" onclick="toggleArchive()">&#9660; Archive ('+sp.archived.length+')</div>';
+      if(_archiveOpen){ lastOwner=''; sp.archived.forEach(function(lst){ if(lst.owner!==lastOwner){ html+='<div class="group-header" style="opacity:.6">'+esc(lst.owner||'Unknown')+'</div>'; lastOwner=lst.owner; } html+=sliHTML(lst); }); }
+    }
     scroll.innerHTML=html;
   } else {
     var mine=S.myLists.filter(matchSearch).slice().sort(function(a,b){return (b.savedAt||0)-(a.savedAt||0);});
     if(!mine.length){ scroll.innerHTML='<div class="lists-empty">No saved lists yet.<br>Build a list and press Save.</div>'; return; }
-    scroll.innerHTML=mine.map(sliHTML).join('');
+    var sp2=splitLists(mine);
+    var html2=sp2.recent.map(sliHTML).join('');
+    if(sp2.archived.length){
+      html2+='<div class="group-header" style="cursor:pointer;color:var(--text3)" onclick="toggleArchive()">&#9660; Archive ('+sp2.archived.length+')</div>';
+      if(_archiveOpen) html2+=sp2.archived.map(sliHTML).join('');
+    }
+    scroll.innerHTML=html2;
   }
 }
+function toggleArchive(){ _archiveOpen=!_archiveOpen; renderSavedLists(); }
 
 function sliHTML(lst){
   var active=S.activeListId===lst.id;
@@ -1243,6 +1256,7 @@ async function loadList(listId){
   $('shoot-name').value=lst.shootName||'';
   setShootPeriod(lst.shootDate||'', lst.shootDateTo||lst.shootDate||'');
   var tag=$('list-tag'); tag.textContent=lst.name||'Untitled'; tag.style.display='';
+  S.listNote=lst.listNote||'';
   S._listModifiedAt[listId]=lst.savedAt||0;
   renderCatalogue(); renderList(); renderSavedLists();
 }
@@ -1315,6 +1329,7 @@ async function confirmSaveList(){
     shootName:$('shoot-name').value.trim(),
     shootDate:getShootFrom(),
     shootDateTo:getShootTo(),
+    listNote:S.listNote||'',
     items:S.packList.map(function(i){ var o=Object.assign({},i); delete o.noteOpen; return o; }),
     savedAt:Date.now(),
     modifiedBy:S.userName,
@@ -1326,6 +1341,7 @@ async function confirmSaveList(){
   var mi=S.myLists.findIndex(function(l){return l.id===listId;});
   if(mi>=0) S.myLists[mi]=listObj; else S.myLists.push(listObj);
   S.activeListId=listId;
+  S._listModifiedAt[listId]=listObj.savedAt;
   saveMyListsLocal();
   var tag=$('list-tag'); tag.textContent=name; tag.style.display='';
   closeModal('save-modal'); renderSavedLists();
@@ -1345,7 +1361,15 @@ async function toggleApprove(listId,e){
   toast(lst.approved?'List approved':'Approval removed');
 }
 
-function openModal(id){ $(id).style.display='flex'; if(id==='loc-modal'){ S._pendingLocs=S.locations.slice(); renderLocEdit(); $('new-loc-input').value=''; } if(id==='cat-modal') renderCatTags(); if(id==='share-modal') $('share-bin-id').value=S.binId; }
+function openModal(id){
+  $(id).style.display='flex';
+  if(id==='loc-modal'){ S._pendingLocs=S.locations.slice(); renderLocEdit(); $('new-loc-input').value=''; }
+  if(id==='cat-modal'){
+    if(!S.categoryOrder.length) S.categoryOrder=sortedCategories();
+    renderCatTags();
+  }
+  if(id==='share-modal'&&$('share-bin-id')) $('share-bin-id').value=S.binId||'';
+}
 function closeModal(id){ $(id).style.display='none'; }
 
 function openItemModal(editId){
@@ -1358,6 +1382,7 @@ function openItemModal(editId){
   $('m-cat').innerHTML=['(none)'].concat(S.categories).map(function(c){return '<option value="'+esc(c)+'"'+(item&&item.category===c?' selected':'')+'>'+esc(c)+'</option>';}).join('');
   $('m-qty').value=item?(item.qty||1):1;
   $('m-subs').value=item?(item.subitems||[]).join('\n'):'';
+  $('m-value').value=item&&item.value?item.value:'';
   $('item-del-btn').style.display=editId?'':'none';
   $('item-dupe-btn').style.display=editId?'':'none';
   openModal('item-modal');
@@ -1371,13 +1396,14 @@ async function saveItem(){
   var category=$('m-cat').value;
   var qty=Math.max(1,parseInt($('m-qty').value)||1);
   var subitems=$('m-subs').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  var value=parseFloat($('m-value').value)||0;
   if(S.editingId){
     var i=S.catalogue.findIndex(function(x){return x.id===S.editingId;});
-    if(i>=0) S.catalogue[i]=Object.assign({},S.catalogue[i],{name:name,location:location,category:category,qty:qty,subitems:subitems});
+    if(i>=0) S.catalogue[i]=Object.assign({},S.catalogue[i],{name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
     var pi=S.packList.findIndex(function(x){return x.id===S.editingId;});
     if(pi>=0) S.packList[pi]=Object.assign({},S.packList[pi],{name:name,location:location,category:category,qty:qty,subitems:subitems});
   } else {
-    S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems});
+    S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
   }
   closeItemModal(); renderCatalogue(); renderList(); await saveBin();
 }
@@ -1414,19 +1440,61 @@ async function saveLocations(){
   await saveBin(); toast('Locations updated - team members sync within 15s');
 }
 
+var _catDragSrc=null;
 function renderCatTags(){
-  $('cat-tag-list').innerHTML=S.categories.map(function(cat){
-    return '<div class="cat-tag">'+esc(cat)+'<button onclick="deleteCategory(\''+esc(cat)+'\')">x</button></div>';
+  var ordered=sortedCategories();
+  var list=$('cat-drag-list'); if(!list) return;
+  list.innerHTML=ordered.map(function(cat,i){
+    return '<div class="cat-drag-row" draggable="true" data-cat="'+esc(cat)+'">'
+      +'<span class="cat-drag-handle">&#8286;</span>'
+      +'<span class="cat-drag-name">'+esc(cat)+'</span>'
+      +'<button class="cat-drag-del" data-delcat="'+esc(cat)+'" title="Remove">&#10005;</button>'
+      +'</div>';
   }).join('');
+  list.querySelectorAll('.cat-drag-row').forEach(function(row){
+    row.addEventListener('dragstart',function(e){
+      _catDragSrc=row.dataset.cat;
+      row.classList.add('dragging-cat');
+      e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',function(){
+      row.classList.remove('dragging-cat');
+      list.querySelectorAll('.cat-drag-row').forEach(function(r){r.classList.remove('drag-over-cat');});
+    });
+    row.addEventListener('dragover',function(e){
+      e.preventDefault();
+      list.querySelectorAll('.cat-drag-row').forEach(function(r){r.classList.remove('drag-over-cat');});
+      row.classList.add('drag-over-cat');
+    });
+    row.addEventListener('drop',function(e){
+      e.preventDefault();
+      row.classList.remove('drag-over-cat');
+      if(!_catDragSrc||_catDragSrc===row.dataset.cat) return;
+      var ordered2=sortedCategories();
+      var from=ordered2.indexOf(_catDragSrc), to=ordered2.indexOf(row.dataset.cat);
+      if(from<0||to<0) return;
+      ordered2.splice(from,1); ordered2.splice(to,0,_catDragSrc);
+      S.categoryOrder=ordered2;
+      _catDragSrc=null;
+      renderCatTags();
+    });
+  });
+  list.onclick=function(e){
+    var btn=e.target.closest('[data-delcat]');
+    if(btn) deleteCategory(btn.dataset.delcat);
+  };
 }
 async function addCategory(){
   var n=$('new-cat-input').value.trim();
   if(!n||S.categories.includes(n)) return;
-  S.categories.push(n); $('new-cat-input').value='';
+  S.categories.push(n);
+  if(S.categoryOrder.indexOf(n)<0) S.categoryOrder.push(n);
+  $('new-cat-input').value='';
   renderCatTags(); renderFilters(); renderCatalogue(); await saveBin(); toast('Category added');
 }
 async function deleteCategory(cat){
   S.categories=S.categories.filter(function(c){return c!==cat;});
+  S.categoryOrder=S.categoryOrder.filter(function(c){return c!==cat;});
   S.catalogue=S.catalogue.map(function(i){return i.category===cat?Object.assign({},i,{category:'(none)'}):i;});
   if(S.catFilter===cat) S.catFilter='all';
   renderCatTags(); renderFilters(); renderCatalogue(); await saveBin(); toast('Category removed');
@@ -1522,6 +1590,7 @@ function openExportModal(){
   // Show "Download all" only if there are multiple locations
   var allBtn=$('export-all-btn');
   if(allBtn) allBtn.style.display=locsInList.length>1?'':'none';
+  var vf=$('ex-value-field'); if(vf) vf.style.display=S.mode==='admin'?'':'none';
   openModal('export-modal');
   setTimeout(function(){$('ex-name').focus();},50);
 }
@@ -1551,11 +1620,12 @@ function runExportAll(){
     var items=S.packList.filter(function(i){return i.location===loc;});
     if(items.length) downloads.push({filter:loc,label:loc,items:items});
   });
+  var inclVal=S.mode==='admin'&&$('ex-include-value')&&$('ex-include-value').checked;
   var idx=0;
   function next(){
     if(idx>=downloads.length) return;
     var d=downloads[idx++];
-    generatePDF(shootName,shootDate,rawDate,d.label,d.items,d.filter);
+    generatePDF(shootName,shootDate,rawDate,d.label,d.items,d.filter,inclVal);
     if(idx<downloads.length) setTimeout(next,800);
   }
   next();
@@ -1577,11 +1647,12 @@ function runExport(){
   var items=filter==='all'?S.packList.slice():S.packList.filter(function(i){return i.location===filter;});
   if(!items.length){ toast('No items for that location'); return; }
   var locLabel=filter==='all'?'Complete kit':filter;
+  var inclVal=S.mode==='admin'&&$('ex-include-value')&&$('ex-include-value').checked;
   closeModal('export-modal');
-  generatePDF(shootName,shootDateStr,rawFrom,locLabel,items,filter);
+  generatePDF(shootName,shootDateStr,rawFrom,locLabel,items,filter,inclVal);
 }
 
-function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
+function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeValue){
   if(!window.jspdf){
     toast('Loading PDF library...');
     var s=document.createElement('script');
@@ -1613,6 +1684,13 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
   doc.text('NEN GEAR LIST GENERATOR   |   Created: '+mm+'/'+dd+'/'+yy+' '+hh+':'+min,ML,27);
 
   var y=44;
+  // List-level note below header
+  if(S.listNote&&S.listNote.trim()){
+    var lnLines=doc.splitTextToSize('Note: '+S.listNote.trim(),usableW);
+    doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(80,78,72);
+    lnLines.forEach(function(line){ if(y+4>PH-14){doc.addPage();y=18;} doc.text(line,ML,y); y+=4; });
+    y+=4;
+  }
   var pageBottom=PH-14;
   function checkPage(needed){ if(y+needed>pageBottom){ doc.addPage(); y=18; } }
 
@@ -1674,6 +1752,10 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
             noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6+pillW+2,y); y+=4; });
             y+=1;
           }
+          if(includeValue&&item.value){
+            doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,78,72);
+            checkPage(4); doc.text('Replacement value: $'+Number(item.value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),ML+6+pillW+2,y); y+=4;
+          }
           y+=3;
         });
       });
@@ -1715,12 +1797,29 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
           noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6,y); y+=4; });
           y+=1;
         }
+        if(includeValue&&item.value){
+          doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,78,72);
+          checkPage(4); doc.text('Replacement value: $'+Number(item.value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),ML+6,y); y+=4;
+        }
         y+=3;
       });
       y+=2;
     });
   }
 
+  // Replacement value total
+  if(includeValue){
+    var total=items.reduce(function(sum,item){return sum+(item.value&&item.qtyNeeded?(item.value*(item.qtyNeeded||1)):item.value?item.value:0);},0);
+    if(total>0){
+      checkPage(14);
+      y+=4;
+      doc.setFillColor(30,30,28); doc.rect(ML,y-5,usableW,10,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
+      doc.text('Total replacement value',ML+3,y);
+      doc.text('$'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),PW-MR,y,{align:'right'});
+      y+=10;
+    }
+  }
   var pageCount=doc.getNumberOfPages();
   for(var p=1;p<=pageCount;p++){
     doc.setPage(p);
@@ -1733,23 +1832,15 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter){
 }
 
 // ── Init ──
-['nen3_binId','nen3_mode','nen3_apiKey','nen3_userName'].forEach(function(k){
-  var v=localStorage.getItem(k);
-  if(v==='undefined'||v==='null') localStorage.removeItem(k);
-});
+// Auto-restore session if previously logged in
 loadLocal();
-if(S.binId&&S.binId!=='undefined'){
-  if(S.mode==='admin'){
-    $('admin-key').value=S.apiKey;
-    if($('bin-id-manual')) $('bin-id-manual').value=S.binId;
-    $('bin-id-field').style.display=''; $('bin-id-input').value=S.binId;
-    setMode('admin');
-  } else {
-    $('viewer-name').value=S.userName; $('viewer-bin-id').value=S.binId;
-    setMode('viewer');
-  }
+if(S.userName&&S.binId==='local'){
+  launchApp();
+} else {
+  // Pre-fill name if stored
+  if(S.userName&&$('admin-name')) $('admin-name').value=S.userName;
+  if(S.mode&&$('admin-role')) $('admin-role').value=S.mode;
 }
-if(!navigator.onLine) setOnline(false);
 </script>
 </body>
 </html>
