@@ -74,13 +74,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .batch-add{background:var(--blue);color:#fff}
 .batch-clear{background:none;border:1px solid var(--blue);color:var(--blue)}
 .cat-list{flex:1;overflow-y:auto}
-.cat-item{padding:8px 14px;border-bottom:1px solid var(--border);transition:background .1s}
+.cat-item{padding:8px 14px;border-bottom:1px solid var(--border);transition:background .1s;cursor:default}
 .cat-item:hover{background:var(--surface2)}
 .cat-item.drag-over-cat-item{outline:2px dashed var(--blue);background:var(--blue-bg)}
+.cat-item.dragging{opacity:.35}
+.cat-drag-handle-inline{color:var(--text3);font-size:14px;cursor:grab;padding:0 4px 0 0;flex-shrink:0;line-height:1;user-select:none}
+.cat-drag-handle-inline:active{cursor:grabbing}
 .cat-item.dragging{opacity:.35}
 .cat-item.in-list{background:var(--green-bg)}
 .cat-item.in-list:hover{background:#d5ecd9}
 .cat-item.unavail{opacity:.5}
+.cat-item.oos{background:var(--red-bg)}
+.cat-item.oos:hover{background:#f5d5d2}
 .cat-item-top{display:flex;align-items:center;gap:5px}
 .cat-check{width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--blue)}
 .cat-name{font-size:12px;font-weight:600;flex:1;color:var(--text);line-height:1.3;cursor:pointer}
@@ -386,6 +391,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="field"><label>Total quantity available</label><input type="number" id="m-qty" min="1" value="1" /></div>
     <div class="field"><label>Sub-items (one per line)</label><textarea id="m-subs" placeholder="Battery x2&#10;Charger&#10;Body cap"></textarea></div>
     <div class="field" id="m-value-field"><label>Replacement value (USD) <span style="font-size:10px;font-weight:400;color:var(--text3)">Admin only</span></label><input type="number" id="m-value" min="0" step="0.01" placeholder="0.00" /></div>
+    <div class="field"><label>Status</label>
+      <select id="m-status" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--surface2);color:var(--text);outline:none">
+        <option value="working">&#9989; Working</option>
+        <option value="oos">&#128308; Out of service</option>
+      </select>
+    </div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeItemModal()">Cancel</button>
       <button class="btn-secondary" id="item-dupe-btn" onclick="dupeItem()" style="display:none">Duplicate</button>
@@ -540,8 +551,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="modal-overlay" id="csv-modal" style="display:none" onclick="if(event.target===this)closeModal('csv-modal')">
   <div class="modal">
     <h3>Import CSV</h3>
-    <p class="modal-sub">Columns: name, location, category, qty, subitems. Subitems separated by semicolons. First row is header (skipped). Duplicate names are skipped.</p>
-    <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea>
+    <p class=
 <script>
 var VERSION = 'v1.5';
 var S = {
@@ -1033,7 +1043,9 @@ function renderCatalogue(){
       var cv=pal(item.location);
       var checked=S.batchSelected.indexOf(item.id)>=0;
       var availHTML='';
-      if(qty>1){
+      if(isOOS){
+        availHTML='<div class="cat-avail" style="color:var(--red);font-weight:600">Out of service</div>';
+      } else if(qty>1){
         if(fullyBooked) availHTML='<div class="cat-avail" style="color:var(--red)">Unavailable on this date</div>';
         else if(avail.booked>0) availHTML='<div class="cat-avail" style="color:var(--amber)">'+avail.available+' of '+qty+' available</div>';
         else availHTML='<div class="cat-avail" style="color:var(--text3)">'+qty+' available</div>';
@@ -1045,14 +1057,14 @@ function renderCatalogue(){
       var qtyOpts='';
       for(var qi=1;qi<=Math.max(1,maxQty);qi++){ qtyOpts+='<option value="'+qi+'"'+(currentQtyNeeded===qi?' selected':'')+'>'+qi+'</option>'; }
       var qtyHTML=qty>1&&!fullyBooked?'<div class="cat-qty-row"><label>Qty needed:</label><select class="qty-select" data-qtyid="'+item.id+'">'+qtyOpts+'</select></div>':'';
-      var addLabel=inListItem?'In list':fullyBooked?'Booked':'+ Add';
+      var addLabel=inListItem?'In list':isOOS?'Out of service':fullyBooked?'Booked':'+ Add';
       var isAdmin=S.mode==='admin';
       var dragAttrs=isAdmin?' draggable="true"'
         +' ondragstart="catDragStart(event,'+item.id+')"'
         +' ondragover="catDragOver(event,'+item.id+')"'
         +' ondrop="catDragDrop(event,'+item.id+')"'
         +' ondragend="catDragEnd(event)"':'';
-      allRows+='<div class="cat-item'+(inListItem?' in-list':'')+(fullyBooked?' unavail':'')+'"'+dragAttrs+' data-id="'+item.id+'">'
+      allRows+='<div class="cat-item'+(inListItem?' in-list':isOOS?' oos':fullyBooked?' unavail':'')+'"'+dragAttrs+' data-id="'+item.id+'">'
         +'<div class="cat-item-top">'
         +(isAdmin?'<span class="cat-drag-handle-inline" title="Drag to reorder">&#8286;</span>':'')
         +'<input type="checkbox" class="cat-check"'+(checked?' checked':'')+(fullyBooked?' disabled':'')+' data-checkid="'+item.id+'" />'
@@ -1180,6 +1192,14 @@ function renderList(){
     var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
     if(!byCat4[cat]){byCat4[cat]=[];catKeys4.push(cat);}
     byCat4[cat].push({item:item,idx:i});
+  });
+  // Sort within each category by sortOrder (matches catalogue order)
+  Object.keys(byCat4).forEach(function(cat){
+    byCat4[cat].sort(function(a,b){
+      var as=a.item.sortOrder!=null?a.item.sortOrder:9999;
+      var bs=b.item.sortOrder!=null?b.item.sortOrder:9999;
+      return as!==bs?as-bs:a.item.name.localeCompare(b.item.name);
+    });
   });
   catKeys4.sort(function(a,b){
     var ai=catOrd4.indexOf(a),bi=catOrd4.indexOf(b);
@@ -1747,6 +1767,7 @@ function openItemModal(editId){
   $('m-qty').value=item?(item.qty||1):1;
   $('m-subs').value=item?(item.subitems||[]).join('\n'):'';
   $('m-value').value=item&&item.value?item.value:'';
+  $('m-status').value=(item&&item.status==='oos')?'oos':'working';
   $('item-del-btn').style.display=editId?'':'none';
   $('item-dupe-btn').style.display=editId?'':'none';
   openModal('item-modal');
@@ -1762,15 +1783,16 @@ async function saveItem(){
   var qty=Math.max(1,parseInt($('m-qty').value)||1);
   var subitems=$('m-subs').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
   var value=parseFloat($('m-value').value)||0;
+  var status=$('m-status').value||'working';
   if(S.editingId){
     var i=S.catalogue.findIndex(function(x){return x.id===S.editingId;});
-    if(i>=0) S.catalogue[i]=Object.assign({},S.catalogue[i],{name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
+    if(i>=0) S.catalogue[i]=Object.assign({},S.catalogue[i],{name:name,location:location,category:category,qty:qty,subitems:subitems,value:value,status:status});
     var pi=S.packList.findIndex(function(x){return x.id===S.editingId;});
     if(pi>=0) S.packList[pi]=Object.assign({},S.packList[pi],{name:name,location:location,category:category,qty:qty,subitems:subitems,value:value});
   } else {
     var catItems=S.catalogue.filter(function(x){return x.category===category;});
     var maxSort=catItems.reduce(function(m,x){return Math.max(m,x.sortOrder||0);},0);
-    S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems,value:value,sortOrder:maxSort+1});
+    S.catalogue.push({id:S.nextId++,name:name,location:location,category:category,qty:qty,subitems:subitems,value:value,status:status,sortOrder:maxSort+1});
   }
   closeItemModal(); renderCatalogue(); renderList(); await saveBin();
 }
@@ -2025,7 +2047,9 @@ function pdfFilename(shootName,rawDate,locLabel){
 }
 
 function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeValue){
-  if(!window.jspdf){
+  // Support both window.jspdf and window.jsPDF (version differences)
+  var jspdfLib=window.jspdf||window.jsPDF;
+  if(!jspdfLib){
     toast('Loading PDF library...');
     var s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -2033,7 +2057,7 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
     s.onerror=function(){toast('Could not load PDF library - check internet connection');};
     document.head.appendChild(s); return;
   }
-  var jsPDF=window.jspdf.jsPDF;
+  var jsPDF=(jspdfLib.jsPDF)||jspdfLib;
   var doc=new jsPDF({unit:'mm',format:'a4'});
   var PW=210,PH=297,ML=14,MR=14,usableW=PW-ML-MR;
 
