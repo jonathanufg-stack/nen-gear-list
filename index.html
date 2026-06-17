@@ -298,7 +298,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       </div>
       <div class="search-box">
         <span class="search-icon">&#9906;</span>
-        <input type="text" id="search-input" placeholder="Search gear..." oninput="renderCatalogue()" />
+        <input type="text" id="search-input" placeholder="Search gear..." oninput="onSearchInput()" />
+        <button id="search-clear-btn" onclick="clearSearch()" style="display:none;position:absolute;right:22px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;line-height:1;padding:2px 4px" title="Clear search">&#10005;</button>
       </div>
       <div class="batch-bar" id="batch-bar">
         <span id="batch-count">0 selected</span>
@@ -525,6 +526,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
   </div>
 </div>
 
+<div class="modal-overlay" id="quick-del-modal" style="display:none" onclick="if(event.target===this)closeModal('quick-del-modal')">
+  <div class="modal">
+    <h3 id="quick-del-title">Remove item?</h3>
+    <p class="modal-sub" id="quick-del-body"></p>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('quick-del-modal')">Cancel</button>
+      <button class="btn-danger" onclick="confirmQuickDelete()">Remove from catalogue</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="del-list-modal" style="display:none" onclick="if(event.target===this){S._pendingDeleteListId=null;closeModal('del-list-modal')}">
+  <div class="modal">
+    <h3 id="del-list-title">Delete list?</h3>
+    <p class="modal-sub" id="del-list-body"></p>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="S._pendingDeleteListId=null;closeModal('del-list-modal')">Cancel</button>
+      <button class="btn-danger" onclick="confirmDeleteList()">Delete list</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="del-confirm-modal" style="display:none" onclick="if(event.target===this)closeModal('del-confirm-modal')">
+  <div class="modal">
+    <h3>Delete from catalogue?</h3>
+    <p class="modal-sub" id="del-confirm-msg"></p>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('del-confirm-modal')">Cancel</button>
+      <button class="btn-secondary" id="del-confirm-export-btn" onclick="exportCSV();closeModal('del-confirm-modal')" style="display:none">Download CSV first</button>
+      <button class="btn-danger" onclick="confirmDeleteSelected()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="csv-modal" style="display:none" onclick="if(event.target===this)closeModal('csv-modal')">
   <div class="modal">
     <h3>Import CSV</h3>
@@ -540,7 +575,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-var VERSION = 'v1.5';
+var VERSION = 'v1.6';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -562,6 +597,9 @@ var S = {
   catalogueVersion:0,
   _approvingListId:null,
   _approvingAction:null,
+  _pendingDeleteAll:false,
+  _pendingDeleteItemId:null,
+  _pendingDeleteListId:null,
 };
 var JSONBIN = 'https://api.jsonbin.io/v3';
 var catDragSrcId=null; // catalogue item drag source id (separate from pack list drag)
@@ -621,6 +659,10 @@ function onDateFromChange(){
     toEl.min=f; // grey out dates before start date
     if(!t||t<f) toEl.value=f;
   }
+  // Keep from-date min at today (user shouldn't be able to pick yesterday for a new shoot)
+  var fromEl=$('shoot-date-from');
+  var todayStr=new Date().toISOString().slice(0,10);
+  if(fromEl&&fromEl.min&&fromEl.min!==''&&f>=todayStr) fromEl.min=todayStr;
   renderCatalogue();
 }
 function onDateToChange(){
@@ -811,9 +853,11 @@ async function launchApp(){
   $('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
+  var todayStr=new Date().toISOString().slice(0,10);
   $('shoot-date-from').value=tStr;
+  $('shoot-date-from').min=todayStr; // grey out past dates on from field
   $('shoot-date-to').value=tStr;
-  $('shoot-date-to').min=tStr; // grey out past dates on load
+  $('shoot-date-to').min=tStr; // grey out dates before start
   var vt=$('version-tag'); if(vt) vt.textContent=VERSION;
   loadMyListsLocal(); loadCacheLocal();
   if(S.cachedBinData) applyBinData(S.cachedBinData);
@@ -999,6 +1043,17 @@ function getAvailability(itemId,forDate){
   return {booked:booked,total:total,available:Math.max(0,total-booked)};
 }
 
+function onSearchInput(){
+  var val=$('search-input').value;
+  var btn=$('search-clear-btn');
+  if(btn) btn.style.display=val?'':'none';
+  renderCatalogue();
+}
+function clearSearch(){
+  var inp=$('search-input'); if(inp) inp.value='';
+  var btn=$('search-clear-btn'); if(btn) btn.style.display='none';
+  renderCatalogue();
+}
 function renderCatalogue(){
   var mLoc=$('m-loc');
   if(mLoc){ var curL=mLoc.value; mLoc.innerHTML=S.locations.map(function(l){return '<option value="'+esc(l)+'"'+(l===curL?' selected':'')+'>'+esc(l)+'</option>';}).join(''); }
@@ -1174,7 +1229,10 @@ function clearList(){
   $('shoot-name').value='';
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
+  var todayStr=new Date().toISOString().slice(0,10);
   setShootPeriod(tStr,tStr);
+  var cf=$('shoot-date-from'); if(cf) cf.min=todayStr;
+  var ct=$('shoot-date-to'); if(ct) ct.min=tStr;
   $('list-tag').style.display='none'; $('batch-bar').style.display='none';
   var pl=$('list-period-label'); if(pl) pl.style.display='none';
   var dsd=$('delete-selected-btn'); if(dsd) dsd.style.display='none';
@@ -1346,7 +1404,16 @@ function toggleNote(idx){
 function updateNote(idx,val){ S.packList[idx].note=val; }
 
 async function quickDeleteItem(itemId){
-  if(!confirm('Remove this item from the catalogue?')) return;
+  var item=S.catalogue.find(function(i){return i.id===itemId;});
+  S._pendingDeleteItemId=itemId;
+  $('quick-del-title').textContent='Remove “'+(item?item.name:'this item')+'”?';
+  $('quick-del-body').textContent='This removes the item from the catalogue permanently. Any lists that include it will not be affected.';
+  openModal('quick-del-modal');
+}
+async function confirmQuickDelete(){
+  closeModal('quick-del-modal');
+  var itemId=S._pendingDeleteItemId; if(!itemId) return;
+  S._pendingDeleteItemId=null;
   S.catalogue=S.catalogue.filter(function(i){return i.id!==itemId;});
   S.packList=S.packList.filter(function(i){return i.id!==itemId;});
   renderCatalogue(); renderList(); await saveBin();
@@ -1375,18 +1442,28 @@ function selectAllCatalogue(){
 }
 async function deleteSelectedItems(){
   if(!S.batchSelected.length) return;
-  if(!confirm('Delete '+S.batchSelected.length+' item'+(S.batchSelected.length!==1?'s':'')+' from the catalogue? This cannot be undone.')) return;
+  var allSelected=S.batchSelected.length===S.catalogue.length;
+  S._pendingDeleteAll=allSelected;
+  var count=S.batchSelected.length;
+  var msg=allSelected
+    ?'You are about to delete all '+count+' items from the catalogue. This cannot be undone.'
+    :'You are about to delete '+count+' item'+(count!==1?'s':'')+' from the catalogue. This cannot be undone.';
+  $('del-confirm-msg').textContent=msg;
+  $('del-confirm-export-btn').style.display=allSelected?'':'none';
+  openModal('del-confirm-modal');
+}
+async function confirmDeleteSelected(){
+  closeModal('del-confirm-modal');
   var toDelete=S.batchSelected.slice();
   S.catalogue=S.catalogue.filter(function(i){return toDelete.indexOf(i.id)<0;});
   S.packList=S.packList.filter(function(i){return toDelete.indexOf(i.id)<0;});
-  // Also remove from all saved lists that are currently in memory
   S.allLists=S.allLists.map(function(lst){
     return Object.assign({},lst,{items:(lst.items||[]).filter(function(i){return toDelete.indexOf(i.id)<0;})});
   });
   S.myLists=S.myLists.map(function(lst){
     return Object.assign({},lst,{items:(lst.items||[]).filter(function(i){return toDelete.indexOf(i.id)<0;})});
   });
-  S.batchSelected=[];
+  S.batchSelected=[]; S._pendingDeleteAll=false;
   $('batch-bar').style.display='none';
   $('delete-selected-btn').style.display='none';
   $('select-all-btn').textContent='Select all';
@@ -1644,7 +1721,9 @@ async function loadList(listId){
   S.activeListId=lst.id;
   $('shoot-name').value=lst.shootName||'';
   setShootPeriod(lst.shootDate||'', lst.shootDateTo||lst.shootDate||'');
-  var toEl=$('shoot-date-to'); if(toEl&&lst.shootDate) toEl.min=lst.shootDate;
+  // Remove min restriction when loading old lists so past dates show correctly
+  var fromEl=$('shoot-date-from'); if(fromEl) fromEl.min='';
+  var toEl=$('shoot-date-to'); if(toEl) toEl.min=lst.shootDate||'';
   var tag=$('list-tag'); tag.textContent=lst.name||'Untitled'; tag.style.display='';
   S.listNote=lst.listNote||'';
   S._listModifiedAt[listId]=lst.savedAt||0;
@@ -1664,13 +1743,22 @@ async function duplicateList(listId){
 
 async function deleteList(listId){
   var lst=S.myLists.find(function(l){return l.id===listId;})||S.allLists.find(function(l){return l.id===listId;});
-  var label=lst?'"'+lst.name+'"':'this list';
-  if(!confirm('Delete '+label+'? This cannot be undone.')) return;
+  S._pendingDeleteListId=listId;
+  $('del-list-title').textContent='Delete “'+(lst?lst.name:'this list')+'”?';
+  $('del-list-body').textContent='This permanently removes the list for everyone on the team. Gear availability will update automatically.';
+  openModal('del-list-modal');
+}
+async function confirmDeleteList(){
+  closeModal('del-list-modal');
+  var listId=S._pendingDeleteListId; if(!listId) return;
+  S._pendingDeleteListId=null;
+  var S_myLists_orig=S.myLists;
   S.myLists=S.myLists.filter(function(l){return l.id!==listId;});
   S.allLists=S.allLists.filter(function(l){return l.id!==listId;});
   if(S.activeListId===listId){ S.activeListId=null; $('list-tag').style.display='none'; }
   saveMyListsLocal(); renderSavedLists();
   if(S.mode==='admin') await saveBin(); else await pushToJSONBin();
+  toast('List deleted');
 }
 
 function openRenameList(listId){
@@ -1918,7 +2006,7 @@ function exportCSV(){
   var csv=[header].concat(rows).join('\n');
   var blob=new Blob([csv],{type:'text/csv'});
   var url=URL.createObjectURL(blob);
-  var a=document.createElement('a'); a.href=url; a.download='nen_catalogue.csv';
+  var a=document.createElement('a'); a.href=url; var now=new Date();var yy=String(now.getFullYear()).slice(2);var mm=String(now.getMonth()+1).padStart(2,'0');var dd=String(now.getDate()).padStart(2,'0');a.download=yy+mm+dd+'_NEN_Gear_Catalogue.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   toast('CSV exported');
 }
@@ -2318,6 +2406,10 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
 }
 if(!navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
+
+
+
+
 
 </script>
 </body>
