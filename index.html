@@ -1740,11 +1740,45 @@ async function duplicateList(listId){
   var src=S.myLists.find(function(l){return l.id===listId;})||S.allLists.find(function(l){return l.id===listId;});
   if(!src) return;
   var newId='list_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  var dupe=Object.assign({},src,{id:newId,name:'Copy of '+src.name,savedAt:Date.now(),approved:false,approvedAt:null,modifiedBy:S.userName});
+  var dupe=Object.assign({},src,{id:newId,name:'Copy of '+src.name,savedAt:Date.now(),approved:false,approvedAt:null,modifiedBy:S.userName,owner:S.userName});
   S.myLists.push(dupe);
   if(S.allLists.findIndex(function(l){return l.id===newId;})<0) S.allLists.push(Object.assign({},dupe));
+  S._listModifiedAt[newId]=dupe.savedAt;
   saveMyListsLocal(); renderSavedLists(); toast('List duplicated');
-  await pushToJSONBin();
+  // Use lists-only save: read-merge-write without touching catalogue fields
+  await saveListsOnly();
+}
+
+async function saveListsOnly(){
+  // Saves teamLists (and requests/knownUsers) without touching catalogue or incrementing catalogueVersion
+  if(!navigator.onLine){ markPending(); toast('Saved locally — will sync when reconnected'); return; }
+  setSyncStatus('loading','Saving…');
+  try{
+    var headers={'X-Bin-Meta':'false'};
+    if(S.apiKey) headers['X-Master-Key']=S.apiKey;
+    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:headers});
+    if(!getRes.ok) throw new Error('HTTP '+getRes.status);
+    var data=await getRes.json(); var rec=data.record||data;
+    // Merge: preserve others lists, add/update our own
+    var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
+    var merged=otherLists.concat(S.myLists);
+    // Preserve catalogue fields exactly as they are in JSONBin
+    var body=Object.assign({},rec,{
+      teamLists:merged,
+      requests:S.requests,
+      updatedAt:Date.now()
+    });
+    // Write headers - admin needs master key
+    var putHeaders={'Content-Type':'application/json'};
+    if(S.apiKey) putHeaders['X-Master-Key']=S.apiKey;
+    var putRes=await fetch(JSONBIN+'/b/'+S.binId,{method:'PUT',headers:putHeaders,body:JSON.stringify(body)});
+    if(!putRes.ok) throw new Error('HTTP '+putRes.status);
+    S.myLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
+    setSyncStatus('ok','Saved'); clearPending();
+  }catch(e){
+    setSyncStatus('error','Save failed'); markPending();
+    toast('Save failed: '+e.message);
+  }
 }
 
 async function deleteList(listId){
@@ -2226,12 +2260,20 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
   var runningTotal=0;
 
   if(filter==='all'){
+    // Group by category only, preserving sortOrder within each category
     var byCat={};
     items.forEach(function(item){
       var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
-      if(!byCat[cat]) byCat[cat]={};
-      if(!byCat[cat][item.location]) byCat[cat][item.location]=[];
-      byCat[cat][item.location].push(item);
+      if(!byCat[cat]) byCat[cat]=[];
+      byCat[cat].push(item);
+    });
+    // Sort items within each category by sortOrder then name
+    Object.keys(byCat).forEach(function(cat){
+      byCat[cat].sort(function(a,b){
+        var as=a.sortOrder!=null?a.sortOrder:9999;
+        var bs=b.sortOrder!=null?b.sortOrder:9999;
+        return as!==bs?as-bs:a.name.localeCompare(b.name);
+      });
     });
     var catOrdPDF=sortedCategories();
     var catKeysPDF=Object.keys(byCat);
@@ -2246,47 +2288,45 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
       doc.setFillColor(238,237,232); doc.rect(ML,y-4,usableW,7,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(95,93,88);
       doc.text(cat.toUpperCase(),ML+3,y); y+=9;
-      Object.keys(byCat[cat]).forEach(function(loc){
-        byCat[cat][loc].forEach(function(item){
-          var subCount=(item.subitems||[]).length;
-          var note=item.note&&item.note.trim();
-          var noteLines=note?doc.splitTextToSize(note,usableW-12):[];
-          var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+(includeValue&&item.value?5:0)+4;
-          checkPage(needed);
-          doc.setDrawColor(150,148,140); doc.setLineWidth(0.45); doc.rect(ML,y-4,4,4);
-          var pi=locPalIdx(item.location);
-          var pbg=LOC_PALS[pi].bg; var pfg=LOC_PALS[pi].fg;
-          var initial=item.location.trim().charAt(0).toUpperCase();
-          var pillW=7;
-          doc.setFillColor(pbg[0],pbg[1],pbg[2]); doc.roundedRect(ML+6,y-4.5,pillW,5,1,1,'F');
-          doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(pfg[0],pfg[1],pfg[2]);
-          doc.text(initial,ML+6+(pillW/2),y-1.2,{align:'center'});
-          var qtyNeeded=item.qtyNeeded||1;
-          var itemLabel=qtyNeeded+'x  '+item.name;
-          doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(26,25,23);
-          doc.text(itemLabel,ML+6+pillW+2,y-0.5); y+=5;
-          if(subCount>0){
-            doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(115,112,105);
-            (item.subitems||[]).forEach(function(sub){
+      byCat[cat].forEach(function(item){
+        var subCount=(item.subitems||[]).length;
+        var note=item.note&&item.note.trim();
+        var noteLines=note?doc.splitTextToSize(note,usableW-12):[];
+        var needed=7+(subCount>0?subCount*4+1:0)+(noteLines.length>0?noteLines.length*4+1:0)+(includeValue&&item.value?5:0)+4;
+        checkPage(needed);
+        doc.setDrawColor(150,148,140); doc.setLineWidth(0.45); doc.rect(ML,y-4,4,4);
+        var pi=locPalIdx(item.location);
+        var pbg=LOC_PALS[pi].bg; var pfg=LOC_PALS[pi].fg;
+        var initial=item.location.trim().charAt(0).toUpperCase();
+        var pillW=7;
+        doc.setFillColor(pbg[0],pbg[1],pbg[2]); doc.roundedRect(ML+6,y-4.5,pillW,5,1,1,'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(pfg[0],pfg[1],pfg[2]);
+        doc.text(initial,ML+6+(pillW/2),y-1.2,{align:'center'});
+        var qtyNeeded=item.qtyNeeded||1;
+        var itemLabel=qtyNeeded+'x  '+item.name;
+        doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(26,25,23);
+        doc.text(itemLabel,ML+6+pillW+2,y-0.5); y+=5;
+        if(subCount>0){
+          doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(115,112,105);
+          (item.subitems||[]).forEach(function(sub){
             checkPage(4);
             doc.setDrawColor(150,148,140); doc.setLineWidth(0.35); doc.rect(ML+6+pillW+2,y-3,3,3);
             doc.text('  '+sub,ML+6+pillW+2+4,y); y+=4;
           });
-            y+=1;
-          }
-          if(noteLines.length>0){
-            doc.setFont('helvetica','bolditalic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
-            noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6+pillW+2,y); y+=4; });
-            y+=1;
-          }
-          if(includeValue&&item.value){
-            var itemTotal=item.value*(qtyNeeded||1);
-            runningTotal+=itemTotal;
-            doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,78,72);
-            checkPage(4); doc.text('Replacement value: $'+Number(item.value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),ML+6+pillW+2,y); y+=4;
-          }
-          y+=3;
-        });
+          y+=1;
+        }
+        if(noteLines.length>0){
+          doc.setFont('helvetica','bolditalic'); doc.setFontSize(7.5); doc.setTextColor(160,40,30);
+          noteLines.forEach(function(line){ checkPage(4); doc.text(line,ML+6+pillW+2,y); y+=4; });
+          y+=1;
+        }
+        if(includeValue&&item.value){
+          var itemTotal=item.value*(qtyNeeded||1);
+          runningTotal+=itemTotal;
+          doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,78,72);
+          checkPage(4); doc.text('Replacement value: $'+Number(item.value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),ML+6+pillW+2,y); y+=4;
+        }
+        y+=3;
       });
       y+=2;
     });
@@ -2414,6 +2454,8 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
 }
 if(!navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
+
+
 
 
 
