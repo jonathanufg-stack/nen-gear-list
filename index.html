@@ -2227,7 +2227,9 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
   doc.text(pdfTitle,ML,13);
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(165,163,155);
   var createdBy=S.userName&&S.userName!=='Admin'?S.userName:'';
-  var metaParts=[shootDate,'Location: '+locLabel];
+  var totalItems=items.reduce(function(sum,i){return sum+(i.qtyNeeded||1);},0);
+  var itemWord=totalItems===1?'item':'items';
+  var metaParts=[shootDate,'Location: '+locLabel,totalItems+' '+itemWord];
   if(createdBy) metaParts.push('Prepared by: '+createdBy);
   doc.text(metaParts.join('   |   '),ML,20);
   var now=new Date();
@@ -2345,6 +2347,14 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
       if(ai<0) return 1; if(bi<0) return -1;
       return ai-bi;
     });
+    // Sort items within each category by sortOrder, matching catalogue order
+    Object.keys(byLoc).forEach(function(cat){
+      byLoc[cat].sort(function(a,b){
+        var as=a.sortOrder!=null?a.sortOrder:9999;
+        var bs=b.sortOrder!=null?b.sortOrder:9999;
+        return as!==bs?as-bs:a.name.localeCompare(b.name);
+      });
+    });
     catKeysPDF2.forEach(function(cat){
       var catItems=byLoc[cat];
       checkPage(9);
@@ -2454,6 +2464,8 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
 }
 if(!navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
+
+
 
 
 
