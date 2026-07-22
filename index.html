@@ -276,6 +276,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Synced</span></div>
     <button class="topbar-btn" onclick="manualSync()">Sync</button>
     <button class="topbar-btn" id="share-btn" onclick="openInviteModal()" style="display:none">Invite team</button>
+    <button class="topbar-btn" id="catalogue-share-btn" onclick="copyCatalogueLink()" style="display:none">Share catalogue</button>
     <button class="topbar-btn" onclick="logout()">Log out</button>
   </div>
   <div class="banner banner-offline" id="offline-banner">Offline &#8212; working from cache. Will sync when reconnected.</div>
@@ -567,7 +568,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeModal('csv-modal')">Cancel</button>
-      <button class="btn-confirm" onclick="importCSV()">Import</button>
+      </button>
     </div>
   </div>
 </div>
@@ -575,7 +576,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-var VERSION = 'v1.6';
+VERSION = 'v1.6';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -850,6 +851,7 @@ async function launchApp(){
   $('admin-tools').style.display=adm?'':'none';
   $('viewer-tools').style.display=adm?'none':'';
   $('share-btn').style.display=S.mode==='admin'?'':'none';
+  $('catalogue-share-btn').style.display=S.mode==='admin'?'':'none';
   $('lists-panel-title').textContent=adm?'All team lists':'My saved lists';
   var tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   var tStr=tomorrow.toISOString().slice(0,10);
@@ -2119,6 +2121,132 @@ async function addFromRequest(reqId){
 }
 
 function openInviteModal(){ openModal('share-modal'); }
+
+function copyCatalogueLink(){
+  var base=window.location.href.split('#')[0];
+  var link=base+'#catalogue='+encodeURIComponent(S.binId);
+  navigator.clipboard.writeText(link).then(function(){
+    toast('Catalogue link copied!');
+  }).catch(function(){
+    prompt('Copy this link:',link);
+  });
+}
+
+async function showCatalogueView(binId){
+  // Hide login, show a clean read-only catalogue page
+  var setup=document.getElementById('setup-screen');
+  if(setup) setup.style.display='none';
+
+  // Fetch the bin
+  var container=document.getElementById('cat-view-container');
+  if(!container){
+    // Build the catalogue view page inline
+    document.body.innerHTML=buildCatalogueViewHTML();
+  }
+
+  var statusEl=document.getElementById('cat-view-status');
+  var listEl=document.getElementById('cat-view-list');
+  var titleEl=document.getElementById('cat-view-title');
+
+  try{
+    if(statusEl) statusEl.textContent='Loading catalogue…';
+    var res=await fetch('https://api.jsonbin.io/v3/b/'+binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    var rec=data.record||data;
+    if(!rec||!rec.catalogue) throw new Error('Not a valid catalogue');
+
+    var catalogue=(rec.catalogue||[]).filter(function(i){ return i.status!=='oos'; });
+    var categories=rec.categories||[];
+    var categoryOrder=rec.categoryOrder||categories;
+    var locations=rec.locations||[];
+
+    // Sort catalogue by category order then sortOrder
+    var orderedCats=categoryOrder.slice();
+    categories.forEach(function(c){ if(orderedCats.indexOf(c)<0) orderedCats.push(c); });
+
+    // Group by category
+    var byCat={};
+    catalogue.forEach(function(item){
+      var cat=item.category&&item.category!=='(none)'?item.category:'Uncategorised';
+      if(!byCat[cat]) byCat[cat]=[];
+      byCat[cat].push(item);
+    });
+    // Sort within each category by sortOrder
+    Object.keys(byCat).forEach(function(cat){
+      byCat[cat].sort(function(a,b){
+        var as=a.sortOrder!=null?a.sortOrder:9999;
+        var bs=b.sortOrder!=null?b.sortOrder:9999;
+        return as!==bs?as-bs:a.name.localeCompare(b.name);
+      });
+    });
+
+    if(statusEl) statusEl.style.display='none';
+
+    // Build PALS for location colours
+    var CAT_PALS=[
+      {bg:'#e8f0fb',fg:'#1a5fa8'},{bg:'#e6f2e9',fg:'#2a6b3a'},
+      {bg:'#fbeae8',fg:'#b03a2e'},{bg:'#fef3e2',fg:'#8a5700'},
+      {bg:'#f0eafb',fg:'#6b35b8'},{bg:'#e6f7f7',fg:'#1a7a7a'}
+    ];
+    function locPill(loc){
+      var idx2=locations.indexOf(loc);
+      var p=CAT_PALS[(idx2>=0?idx2:0)%CAT_PALS.length];
+      return '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;background:'+p.bg+';color:'+p.fg+'">'+esc2(loc)+'</span>';
+    }
+
+    var html='';
+    var shownCats=orderedCats.filter(function(cat){ return byCat[cat]&&byCat[cat].length; });
+    shownCats.forEach(function(cat){
+      html+='<div class="cv-cat-header">'+esc2(cat)+'</div>';
+      byCat[cat].forEach(function(item){
+        html+='<div class="cv-item">';
+        html+='<div class="cv-item-top">';
+        html+='<span class="cv-name">'+esc2(item.name)+'</span>';
+        html+=locPill(item.location);
+        if((item.qty||1)>1) html+='<span class="cv-qty">x'+item.qty+'</span>';
+        html+='</div>';
+        if(item.subitems&&item.subitems.length){
+          html+='<div class="cv-subs">';
+          item.subitems.forEach(function(s){ html+='<span class="cv-sub">'+esc2(s)+'</span>'; });
+          html+='</div>';
+        }
+        html+='</div>';
+      });
+    });
+    if(listEl) listEl.innerHTML=html;
+
+    var total=catalogue.length;
+    if(titleEl) titleEl.textContent='Gear Catalogue — '+total+' item'+(total!==1?'s':'');
+
+  }catch(e){
+    if(statusEl){ statusEl.textContent='Could not load catalogue: '+e.message; statusEl.style.color='#b03a2e'; }
+  }
+}
+
+function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function buildCatalogueViewHTML(){
+  return '<div id="cat-view-container" style="max-width:680px;margin:0 auto;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif">'+
+    '<div style="margin-bottom:24px">'+
+    '<div style="font-size:11px;font-weight:700;color:#9e9b93;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">NEN Creative</div>'+
+    '<h1 id="cat-view-title" style="font-size:22px;font-weight:800;letter-spacing:-.03em;color:#1a1917;margin-bottom:4px">Gear Catalogue</h1>'+
+    '<div style="font-size:12px;color:#9e9b93">Read-only view &mdash; updates automatically</div>'+
+    '</div>'+
+    '<div id="cat-view-status" style="color:#6b6860;font-size:14px;padding:20px 0">Loading…</div>'+
+    '<div id="cat-view-list"></div>'+
+    '<style>'+
+    '.cv-cat-header{padding:5px 0 4px;font-size:10px;font-weight:700;color:#9e9b93;text-transform:uppercase;letter-spacing:.08em;border-top:1px solid #e2e0d8;border-bottom:1px solid #e2e0d8;margin:12px 0 4px;background:#f5f4f1}'+
+    '.cv-cat-header:first-child{margin-top:0;border-top:none}'+
+    '.cv-item{padding:8px 0;border-bottom:1px solid #f0efe9;display:flex;flex-direction:column;gap:3px}'+
+    '.cv-item-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
+    '.cv-name{font-size:13px;font-weight:600;color:#1a1917;flex:1}'+
+    '.cv-qty{font-size:11px;color:#9e9b93;font-weight:500}'+
+    '.cv-subs{display:flex;flex-wrap:wrap;gap:4px;padding-left:2px}'+
+    '.cv-sub{font-size:10px;color:#6b6860;background:#f0efe9;padding:1px 6px;border-radius:20px}'+
+    '</style>'+
+    '</div>';
+}
 function copyInviteLink(){
   var inp=$('invite-link-input');
   var link=inp?inp.value:'';
@@ -2432,6 +2560,12 @@ loadLocal();
   if(hash&&hash.indexOf('binid=')>=0){
     var params={};
     hash.slice(1).split('&').forEach(function(p){ var kv=p.split('='); if(kv.length===2) params[kv[0]]=decodeURIComponent(kv[1]); });
+    if(params.catalogue){
+      // Read-only catalogue view - show immediately, no login
+      history.replaceState(null,'',window.location.pathname+window.location.search);
+      showCatalogueView(params.catalogue);
+      return;
+    }
     if(params.binid){
       if($('viewer-bin-id')) $('viewer-bin-id').value=params.binid;
       setMode('viewer');
@@ -2464,6 +2598,8 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
 }
 if(!navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
+
+
 
 
 
