@@ -2133,14 +2133,17 @@ function copyCatalogueLink(){
 }
 
 async function showCatalogueView(binId){
-  // Hide login, show a clean read-only catalogue page
+  // Hide everything and render clean read-only page
   var setup=document.getElementById('setup-screen');
   if(setup) setup.style.display='none';
+  var app=document.getElementById('app-screen');
+  if(app) app.style.display='none';
+  // Reset body background for the clean view
+  document.body.style.background='#f5f4f1';
+  document.body.style.minHeight='100vh';
 
-  // Fetch the bin
   var container=document.getElementById('cat-view-container');
   if(!container){
-    // Build the catalogue view page inline
     document.body.innerHTML=buildCatalogueViewHTML();
   }
 
@@ -2557,26 +2560,26 @@ loadLocal();
 
 (function(){
   var hash=window.location.hash;
-  if(hash&&hash.indexOf('binid=')>=0){
-    var params={};
-    hash.slice(1).split('&').forEach(function(p){ var kv=p.split('='); if(kv.length===2) params[kv[0]]=decodeURIComponent(kv[1]); });
-    if(params.catalogue){
-      // Read-only catalogue view - show immediately, no login
-      history.replaceState(null,'',window.location.pathname+window.location.search);
-      showCatalogueView(params.catalogue);
-      return;
-    }
-    if(params.binid){
-      if($('viewer-bin-id')) $('viewer-bin-id').value=params.binid;
-      setMode('viewer');
-      history.replaceState(null,'',window.location.pathname+window.location.search);
-    }
+  if(!hash) return;
+  var params={};
+  hash.slice(1).split('&').forEach(function(p){ var kv=p.split('='); if(kv.length===2) params[kv[0]]=decodeURIComponent(kv[1]); });
+  if(params.catalogue){
+    // Read-only catalogue view — intercept before anything else including auto-login
+    history.replaceState(null,'',window.location.pathname+window.location.search);
+    window._catalogueMode=true;
+    showCatalogueView(params.catalogue);
+    return;
+  }
+  if(params.binid){
+    if($('viewer-bin-id')) $('viewer-bin-id').value=params.binid;
+    setMode('viewer');
+    history.replaceState(null,'',window.location.pathname+window.location.search);
   }
 })();
 
 (function(){ var sv=$('setup-version'); if(sv) sv.textContent=VERSION; })();
 
-if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
+if(!window._catalogueMode && S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
   if(S.mode==='admin'){
     if($('admin-name')) $('admin-name').value=localStorage.getItem('nen3_adminName')||S.userName||'';
     if($('admin-key')) $('admin-key').value=S.apiKey||'';
@@ -2588,7 +2591,7 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
     showPanel('viewer');
   }
   if(S.userName&&S.binId){ launchApp(); }
-} else {
+} else if(!window._catalogueMode) {
   // Pre-fill names from role-specific storage even on a fresh login screen
   var svn=localStorage.getItem('nen3_viewerName');
   var san=localStorage.getItem('nen3_adminName');
@@ -2596,8 +2599,10 @@ if(S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
   if(san&&$('admin-name')) $('admin-name').value=san;
   showPanel('viewer');
 }
-if(!navigator.onLine) setOnline(false);
+if(!window._catalogueMode && !navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
+
+
 
 
 
