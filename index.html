@@ -2147,11 +2147,11 @@ async function showCatalogueView(binId){
     document.body.innerHTML=buildCatalogueViewHTML();
   }
 
-  var statusEl=document.getElementById('cat-view-status');
-  var listEl=document.getElementById('cat-view-list');
-  var titleEl=document.getElementById('cat-view-title');
-
+  // Elements are created by buildCatalogueViewHTML() — look them up after
   try{
+    var statusEl=document.getElementById('cat-view-status');
+    var listEl=document.getElementById('cat-view-list');
+    var titleEl=document.getElementById('cat-view-title');
     if(statusEl) statusEl.textContent='Loading catalogue…';
     var res=await fetch('https://api.jsonbin.io/v3/b/'+binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -2205,7 +2205,7 @@ async function showCatalogueView(binId){
       byCat[cat].forEach(function(item){
         html+='<div class="cv-item">';
         html+='<div class="cv-item-top">';
-        if((item.qty||1)>1) html+='<span class="cv-qty">'+item.qty+'x</span>';
+        html+='<span class="cv-qty">'+( item.qty||1)+'x</span>';
         html+='<span class="cv-name">'+esc2(item.name)+'</span>';
         html+=locPill(item.location);
         html+='</div>';
@@ -2244,7 +2244,7 @@ function buildCatalogueViewHTML(){
     '.cv-item{padding:8px 0;border-bottom:1px solid #f0efe9;display:flex;flex-direction:column;gap:3px}'+
     '.cv-item-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
     '.cv-name{font-size:13px;font-weight:600;color:#1a1917;flex:1}'+
-    '.cv-qty{font-size:11px;color:#9e9b93;font-weight:500}'+
+    '.cv-qty{font-size:13px;color:#1a1917;font-weight:600;flex-shrink:0}'+
     '.cv-subs{display:flex;flex-wrap:wrap;gap:4px;padding-left:2px}'+
     '.cv-sub{font-size:10px;color:#6b6860;background:#f0efe9;padding:1px 6px;border-radius:20px}'+
     '</style>'+
@@ -2601,6 +2601,8 @@ if(!window._catalogueMode && S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
 }
 if(!window._catalogueMode && !navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
+
+
 
 
 
