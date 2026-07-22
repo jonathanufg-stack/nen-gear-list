@@ -576,7 +576,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-VERSION = 'v1.6';
+VERSION = 'v1.7';
 var S = {
   mode:'admin', apiKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -2205,9 +2205,9 @@ async function showCatalogueView(binId){
       byCat[cat].forEach(function(item){
         html+='<div class="cv-item">';
         html+='<div class="cv-item-top">';
+        if((item.qty||1)>1) html+='<span class="cv-qty">'+item.qty+'x</span>';
         html+='<span class="cv-name">'+esc2(item.name)+'</span>';
         html+=locPill(item.location);
-        if((item.qty||1)>1) html+='<span class="cv-qty">x'+item.qty+'</span>';
         html+='</div>';
         if(item.subitems&&item.subitems.length){
           html+='<div class="cv-subs">';
@@ -2601,6 +2601,7 @@ if(!window._catalogueMode && S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
 }
 if(!window._catalogueMode && !navigator.onLine) setOnline(false);
 }); // end DOMContentLoaded
+
 
 
 
