@@ -581,7 +581,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-VERSION = 'v1.8';
+VERSION = 'v1.8.1';
 var S = {
   mode:'admin', apiKey:'', accessKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -944,22 +944,21 @@ async function syncAll(silent){
   }
 }
 
+function ownersMatch(a,b){
+  return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+}
 function rehydrateMyLists(teamLists){
-  var remoteMine=(teamLists||[]).filter(function(l){return l.owner===S.userName;});
-  var pending=S.pendingWrite||hasPending();
-  if(!S.userName){ S.myLists=remoteMine; saveMyListsLocal(); return; }
-  if(!pending){
-    S.myLists=remoteMine;
-    saveMyListsLocal();
-    return;
-  }
-  // Offline/pending local writes: merge by id, keep newer savedAt; keep local-only ids
+  var remoteMine=(teamLists||[]).filter(function(l){
+    return l && ownersMatch(l.owner, S.userName);
+  });
   var byId={};
   remoteMine.forEach(function(l){ if(l&&l.id) byId[l.id]=l; });
   (S.myLists||[]).forEach(function(l){
     if(!l||!l.id) return;
     var r=byId[l.id];
-    if(!r || (l.savedAt||0)>=(r.savedAt||0)) byId[l.id]=l;
+    if(!r){ byId[l.id]=l; return; }
+    // Prefer the copy with the newer savedAt; if remote omitted savedAt, keep local
+    if((l.savedAt||0)>=(r.savedAt||0)) byId[l.id]=l;
   });
   S.myLists=Object.keys(byId).map(function(k){return byId[k];});
   saveMyListsLocal();
@@ -1038,12 +1037,12 @@ async function pushToJSONBin(){
     var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:binGetHeaders()});
     if(!getRes.ok) throw new Error('HTTP '+getRes.status);
     var data=await getRes.json(); var rec=data.record||data;
-    var remoteMine=(rec.teamLists||[]).filter(function(l){return l.owner===S.userName;});
+    var remoteMine=(rec.teamLists||[]).filter(function(l){return l&&ownersMatch(l.owner,S.userName);});
     if((!S.myLists||!S.myLists.length) && remoteMine.length){
       rehydrateMyLists(rec.teamLists);
       throw new Error('Refusing to overwrite remote lists with empty local lists');
     }
-    var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
+    var otherLists=(rec.teamLists||[]).filter(function(l){return l&&!ownersMatch(l.owner,S.userName);});
     var merged=otherLists.concat(S.myLists);
     var myReqs=S.requests.filter(function(r){return r.requester===S.userName;});
     var otherReqs=(rec.requests||[]).filter(function(r){return r.requester!==S.userName;});
@@ -1700,7 +1699,7 @@ function renderSavedLists(){
   function matchSearch(lst){ if(!search) return true; return (lst.name||'').toLowerCase().includes(search)||(lst.shootName||'').toLowerCase().includes(search)||(lst.shootDate||'').includes(search); }
   function splitLists(arr){
     var recent=[],archived=[];
-    arr.forEach(function(l){ ((l.savedAt||0)<cutoff?archived:recent).push(l); });
+    arr.forEach(function(l){ ((l.savedAt&&l.savedAt<cutoff)?archived:recent).push(l); });
     return {recent:recent,archived:archived};
   }
   if(isAdmin){
@@ -1711,6 +1710,7 @@ function renderSavedLists(){
     if(!all.length){ scroll.innerHTML='<div class="lists-empty">No team lists yet.</div>'; return; }
     var sp=splitLists(all);
     var html=''; var lastOwner='';
+    if(!sp.recent.length && sp.archived.length) _archiveOpen=true;
     sp.recent.forEach(function(lst){ if(lst.owner!==lastOwner){ html+='<div class="group-header">'+esc(lst.owner||'Unknown')+'</div>'; lastOwner=lst.owner; } html+=sliHTML(lst); });
     if(sp.archived.length){
       html+='<div class="group-header" style="cursor:pointer;color:var(--text3)" onclick="toggleArchive()">&#9660; Archive ('+sp.archived.length+')</div>';
@@ -1721,6 +1721,7 @@ function renderSavedLists(){
     var mine=S.myLists.filter(matchSearch).slice().sort(function(a,b){return (b.savedAt||0)-(a.savedAt||0);});
     if(!mine.length){ scroll.innerHTML='<div class="lists-empty">No saved lists yet.<br>Build a list and press Save.</div>'; return; }
     var sp2=splitLists(mine);
+    if(!sp2.recent.length && sp2.archived.length) _archiveOpen=true;
     var html2=sp2.recent.map(sliHTML).join('');
     if(sp2.archived.length){
       html2+='<div class="group-header" style="cursor:pointer;color:var(--text3)" onclick="toggleArchive()">&#9660; Archive ('+sp2.archived.length+')</div>';
@@ -1785,18 +1786,24 @@ try{document.addEventListener('click',closeAllMenus);}catch(e){}
 
 async function loadList(listId){
   closeAllMenus();
-  await syncAll(true);
-  var src=S.mode==='admin'?S.allLists:S.myLists;
-  var lst=src.find(function(l){return l.id===listId;})
-    || S.allLists.find(function(l){return l.id===listId;});
-  if(!lst) return;
+  function findList(id){
+    return (S.allLists||[]).find(function(l){return l&&l.id===id;})
+      || (S.myLists||[]).find(function(l){return l&&l.id===id;});
+  }
+  var lst=findList(listId);
+  if(!lst){
+    await syncAll(true);
+    lst=findList(listId);
+  }
+  if(!lst){ toast('Could not open that list — it may not have synced yet'); return; }
   S.packList=(lst.items||[]).map(function(i){return Object.assign({},i,{note:i.note||'',noteOpen:false});});
   S.activeListId=lst.id;
   $('shoot-name').value=lst.shootName||'';
-  setShootPeriod(lst.shootDate||'', lst.shootDateTo||lst.shootDate||'');
-  // Remove min restriction when loading old lists so past dates show correctly
+  // Clear min before setting, otherwise browsers reject past shoot dates
   var fromEl=$('shoot-date-from'); if(fromEl) fromEl.min='';
-  var toEl=$('shoot-date-to'); if(toEl) toEl.min=lst.shootDate||'';
+  var toEl=$('shoot-date-to'); if(toEl) toEl.min='';
+  setShootPeriod(lst.shootDate||'', lst.shootDateTo||lst.shootDate||'');
+  if(toEl) toEl.min=lst.shootDate||'';
   var tag=$('list-tag'); tag.textContent=lst.name||'Untitled'; tag.style.display='';
   S.listNote=lst.listNote||'';
   S._listModifiedAt[listId]=lst.savedAt||0;
@@ -1824,13 +1831,13 @@ async function saveListsOnly(){
     var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:binGetHeaders()});
     if(!getRes.ok) throw new Error('HTTP '+getRes.status);
     var data=await getRes.json(); var rec=data.record||data;
-    var remoteMine=(rec.teamLists||[]).filter(function(l){return l.owner===S.userName;});
+    var remoteMine=(rec.teamLists||[]).filter(function(l){return l&&ownersMatch(l.owner,S.userName);});
     if((!S.myLists||!S.myLists.length) && remoteMine.length){
       rehydrateMyLists(rec.teamLists);
       throw new Error('Refusing to overwrite remote lists with empty local lists');
     }
     // Merge: preserve others lists, add/update our own
-    var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
+    var otherLists=(rec.teamLists||[]).filter(function(l){return l&&!ownersMatch(l.owner,S.userName);});
     var merged=otherLists.concat(S.myLists);
     var ku=(rec.knownUsers||[]).slice();
     var kuIdx=ku.findIndex(function(u){return u.name===S.userName;});
