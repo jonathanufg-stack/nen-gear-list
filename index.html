@@ -245,6 +245,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
         <input type="text" id="viewer-bin-id" placeholder="Paste the Bin ID from your admin" />
         <p class="hint">Or use an invite link from your admin.</p>
       </div>
+      <div class="field">
+        <label>Access Key — optional, from your admin</label>
+        <input id="viewer-access-key" type="password" placeholder="JSONBin access key" autocomplete="off">
+        <div class="hint">Needed once the catalogue is private. Leave blank if you currently connect with Bin ID only.</div>
+      </div>
       <div id="viewer-error" style="display:none;background:var(--red-bg);border:1px solid #f5b8b4;border-radius:8px;padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px"></div>
       <button class="btn-primary" id="viewer-connect-btn" onclick="viewerConnect()">Open &#8594;</button>
     </div>
@@ -471,7 +476,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="modal-overlay" id="share-modal" style="display:none" onclick="if(event.target===this)closeModal('share-modal')">
   <div class="modal">
     <h3>Invite team member</h3>
-    <p class="modal-sub">Share this link. They'll go straight into the app as a team member.</p>
+    <p class="modal-sub">Share this link. They'll go straight into the app as a team member. Once the catalogue is private, team members will also need an Access Key from you (it cannot go in this public link).</p>
     <div class="field"><label>Invite link</label>
       <input type="text" id="invite-link-input" readonly onclick="this.select()" style="font-size:11px;font-family:monospace;background:var(--surface2)" />
     </div>
@@ -576,9 +581,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-VERSION = 'v1.7';
+VERSION = 'v1.8';
 var S = {
-  mode:'admin', apiKey:'', binId:'', userName:'',
+  mode:'admin', apiKey:'', accessKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
   categories:['Camera','Lighting','Grip'],
   packList:[], activeListId:null,
@@ -603,6 +608,18 @@ var S = {
   _pendingDeleteListId:null,
 };
 var JSONBIN = 'https://api.jsonbin.io/v3';
+function binGetHeaders(){
+  var h={'X-Bin-Meta':'false'};
+  if(S.apiKey) h['X-Master-Key']=S.apiKey;
+  else if(S.accessKey) h['X-Access-Key']=S.accessKey;
+  return h;
+}
+function binPutHeaders(){
+  var h={'Content-Type':'application/json'};
+  if(S.apiKey) h['X-Master-Key']=S.apiKey;
+  else if(S.accessKey) h['X-Access-Key']=S.accessKey;
+  return h;
+}
 var catDragSrcId=null; // catalogue item drag source id (separate from pack list drag)
 
 // Check if a name is already taken by another active user in the bin
@@ -617,6 +634,7 @@ async function checkNameAvailable(name, binId, apiKey){
     if((storedViewer&&storedViewer.toLowerCase()===nameLc)||(storedAdmin&&storedAdmin.toLowerCase()===nameLc)) return null;
     var headers={'X-Bin-Meta':'false'};
     if(apiKey) headers['X-Master-Key']=apiKey;
+    else if(S.accessKey) headers['X-Access-Key']=S.accessKey;
     var res=await fetch(JSONBIN+'/b/'+binId+'/latest',{headers:headers});
     if(!res.ok) return null; // can't check — allow through
     var data=await res.json();
@@ -689,8 +707,8 @@ function toast(msg,dur){
   clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove('show');},dur);
 }
 
-function saveLocal(){ ['mode','apiKey','binId','userName'].forEach(function(k){localStorage.setItem('nen3_'+k,S[k]);}); }
-function loadLocal(){ ['mode','apiKey','binId','userName'].forEach(function(k){S[k]=localStorage.getItem('nen3_'+k)||'';}); }
+function saveLocal(){ ['mode','apiKey','accessKey','binId','userName'].forEach(function(k){localStorage.setItem('nen3_'+k,S[k]);}); }
+function loadLocal(){ ['mode','apiKey','accessKey','binId','userName'].forEach(function(k){S[k]=localStorage.getItem('nen3_'+k)||'';}); }
 function saveCacheLocal(){ try{localStorage.setItem('nen3_cache_'+S.binId,JSON.stringify(S.cachedBinData));}catch(e){} }
 function loadCacheLocal(){ try{S.cachedBinData=JSON.parse(localStorage.getItem('nen3_cache_'+S.binId)||'null');}catch(e){S.cachedBinData=null;} }
 function saveMyListsLocal(){ try{localStorage.setItem('nen3_lists_'+S.binId+'_'+S.userName,JSON.stringify(S.myLists));}catch(e){} }
@@ -773,7 +791,7 @@ async function adminConnect(){
     ];
     var res=await fetch(JSONBIN+'/b',{
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'NENGearGen3','X-Bin-Private':'false'},
+      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'NENGearGen3','X-Bin-Private':'true'},
       body:JSON.stringify({catalogue:SAMPLE,locations:['Location A','Location B'],categories:['Camera','Lighting','Grip'],categoryOrder:['Camera','Lighting','Grip'],nextId:6,teamLists:[],requests:[],updatedAt:Date.now()})
     });
     var data=await res.json();
@@ -800,8 +818,10 @@ async function viewerConnect(){
   hideSetupError('viewer');
   var btn=$('viewer-connect-btn'); btn.disabled=true; btn.textContent='Connecting…';
   try{
+    var ak=$('viewer-access-key')?$('viewer-access-key').value.trim():'';
+    S.accessKey=ak; S.apiKey='';
     // Test the bin before launching
-    var test=await fetch(JSONBIN+'/b/'+binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
+    var test=await fetch(JSONBIN+'/b/'+binId+'/latest',{headers:binGetHeaders()});
     if(!test.ok) throw new Error('Bin not found or not accessible (HTTP '+test.status+')');
     var data=await test.json();
     var rec=data.record||data;
@@ -809,7 +829,7 @@ async function viewerConnect(){
     // Name uniqueness check
     var taken=await checkNameAvailable(name,binId,'');
     if(taken){ showSetupError('viewer','The name "'+name+'" is already taken by another '+taken+'. Please choose a different name.'); btn.disabled=false; btn.textContent='Open →'; return; }
-    S.mode='viewer'; S.apiKey=''; S.binId=binId; S.userName=name;
+    S.mode='viewer'; S.apiKey=''; S.binId=binId; S.userName=name; S.accessKey=ak;
     saveLocal();
     localStorage.setItem('nen3_viewerName', name); // kept separate so admin login doesn't overwrite
     await launchApp();
@@ -833,11 +853,27 @@ function hideSetupError(panel){
 
 function logout(){
   clearInterval(S.autoSyncTimer); S.autoSyncTimer=null;
-  $('app-screen').style.display='none';
-  $('setup-screen').style.display='flex';
+  var binId=S.binId, userName=S.userName;
+  ['nen3_apiKey','nen3_accessKey','nen3_mode','nen3_binId','nen3_userName','nen3_adminName','nen3_viewerName'].forEach(function(k){
+    try{localStorage.removeItem(k);}catch(e){}
+  });
+  if(binId){
+    try{localStorage.removeItem('nen3_cache_'+binId);}catch(e){}
+    try{localStorage.removeItem('nen3_pending_'+binId);}catch(e){}
+    if(userName) try{localStorage.removeItem('nen3_lists_'+binId+'_'+userName);}catch(e){}
+  }
   S.packList=[]; S.myLists=[]; S.allLists=[]; S.activeListId=null; S.batchSelected=[];
   S.listNote=''; S.categoryOrder=[]; S._listModifiedAt={};
   S.userName=''; S.binId=''; S.mode='viewer';
+  S.apiKey=''; S.accessKey=''; S.cachedBinData=null; S.pendingWrite=false;
+  if($('admin-key')) $('admin-key').value='';
+  if($('viewer-access-key')) $('viewer-access-key').value='';
+  if($('viewer-bin-id')) $('viewer-bin-id').value='';
+  if($('bin-id-manual')) $('bin-id-manual').value='';
+  if($('admin-name')) $('admin-name').value='';
+  if($('viewer-name')) $('viewer-name').value='';
+  $('app-screen').style.display='none';
+  $('setup-screen').style.display='flex';
   showPanel('viewer');
 }
 
@@ -865,6 +901,9 @@ async function launchApp(){
   if(S.cachedBinData) applyBinData(S.cachedBinData);
   await syncAll();
   clearInterval(S.autoSyncTimer); S.autoSyncTimer=setInterval(function(){syncAll(true);},15000);
+  if(S.mode==='viewer' && !S.accessKey){
+    toast('Tip: ask admin for a JSONBin access key so the catalogue can be made private.');
+  }
 }
 
 function setSyncStatus(st,label){
@@ -883,9 +922,7 @@ async function syncAll(silent){
   $('offline-banner').style.display='none';
   if(!silent) setSyncStatus('loading','Syncing…');
   try{
-    var headers={'X-Bin-Meta':'false'};
-    if(S.apiKey) headers['X-Master-Key']=S.apiKey;
-    var res=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:headers});
+    var res=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:binGetHeaders()});
     if(!res.ok) throw new Error('HTTP '+res.status);
     var data=await res.json();
     var rec=data.record||data;
@@ -907,6 +944,26 @@ async function syncAll(silent){
   }
 }
 
+function rehydrateMyLists(teamLists){
+  var remoteMine=(teamLists||[]).filter(function(l){return l.owner===S.userName;});
+  var pending=S.pendingWrite||hasPending();
+  if(!S.userName){ S.myLists=remoteMine; saveMyListsLocal(); return; }
+  if(!pending){
+    S.myLists=remoteMine;
+    saveMyListsLocal();
+    return;
+  }
+  // Offline/pending local writes: merge by id, keep newer savedAt; keep local-only ids
+  var byId={};
+  remoteMine.forEach(function(l){ if(l&&l.id) byId[l.id]=l; });
+  (S.myLists||[]).forEach(function(l){
+    if(!l||!l.id) return;
+    var r=byId[l.id];
+    if(!r || (l.savedAt||0)>=(r.savedAt||0)) byId[l.id]=l;
+  });
+  S.myLists=Object.keys(byId).map(function(k){return byId[k];});
+  saveMyListsLocal();
+}
 function applyBinData(rec){
   S.catalogue=rec.catalogue||[];
   S.locations=rec.locations||['Location A','Location B'];
@@ -927,6 +984,7 @@ function applyBinData(rec){
       var isSelf=(remote.modifiedBy&&remote.modifiedBy===S.userName&&Math.abs(remote.savedAt-knownAt)<2000);
       if(!isSelf){
         S.allLists=newLists;
+        rehydrateMyLists(newLists);
         renderFilters(); renderCatalogue(); renderSavedLists(); renderAdminRequests();
         showListConflict(remote);
         return;
@@ -940,6 +998,7 @@ function applyBinData(rec){
     }
   }
   S.allLists=newLists;
+  rehydrateMyLists(newLists);
   renderFilters(); renderCatalogue(); renderList(); renderSavedLists(); renderAdminRequests();
 }
 
@@ -959,7 +1018,7 @@ async function saveBin(){
     var payload={catalogue:S.catalogue,locations:S.locations,categories:S.categories,categoryOrder:S.categoryOrder,nextId:S.nextId,teamLists:S.allLists,requests:S.requests,knownUsers:knownUsers,catalogueLastSavedBy:S.userName,catalogueVersion:(S.catalogueVersion||0)+1,updatedAt:Date.now()};
     var res=await fetch(JSONBIN+'/b/'+S.binId,{
       method:'PUT',
-      headers:{'Content-Type':'application/json','X-Master-Key':S.apiKey},
+      headers:binPutHeaders(),
       body:JSON.stringify(payload)
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -976,9 +1035,14 @@ async function pushToJSONBin(){
   if(S.mode==='admin'){ await saveBin(); return; }
   setSyncStatus('loading','Saving…');
   try{
-    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:{'X-Bin-Meta':'false'}});
+    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:binGetHeaders()});
     if(!getRes.ok) throw new Error('HTTP '+getRes.status);
     var data=await getRes.json(); var rec=data.record||data;
+    var remoteMine=(rec.teamLists||[]).filter(function(l){return l.owner===S.userName;});
+    if((!S.myLists||!S.myLists.length) && remoteMine.length){
+      rehydrateMyLists(rec.teamLists);
+      throw new Error('Refusing to overwrite remote lists with empty local lists');
+    }
     var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
     var merged=otherLists.concat(S.myLists);
     var myReqs=S.requests.filter(function(r){return r.requester===S.userName;});
@@ -988,10 +1052,11 @@ async function pushToJSONBin(){
     var kuIdx=ku.findIndex(function(u){return u.name===S.userName;});
     var kuRec=buildUserRecord(S.userName,'team member');
     if(kuIdx>=0) ku[kuIdx]=kuRec; else ku.push(kuRec);
-    var body=Object.assign({},rec,{teamLists:merged,requests:otherReqs.concat(myReqs),categoryOrder:S.categoryOrder,knownUsers:ku,updatedAt:Date.now()});
+    // Viewer writes must not clobber catalogue: copy GET record, replace lists/requests/knownUsers/updatedAt only
+    var body=Object.assign({},rec,{teamLists:merged,requests:otherReqs.concat(myReqs),knownUsers:ku,updatedAt:Date.now()});
     var putRes=await fetch(JSONBIN+'/b/'+S.binId,{
       method:'PUT',
-      headers:{'Content-Type':'application/json'},
+      headers:binPutHeaders(),
       body:JSON.stringify(body)
     });
     if(!putRes.ok) throw new Error('HTTP '+putRes.status);
@@ -1756,24 +1821,29 @@ async function saveListsOnly(){
   if(!navigator.onLine){ markPending(); toast('Saved locally — will sync when reconnected'); return; }
   setSyncStatus('loading','Saving…');
   try{
-    var headers={'X-Bin-Meta':'false'};
-    if(S.apiKey) headers['X-Master-Key']=S.apiKey;
-    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:headers});
+    var getRes=await fetch(JSONBIN+'/b/'+S.binId+'/latest',{headers:binGetHeaders()});
     if(!getRes.ok) throw new Error('HTTP '+getRes.status);
     var data=await getRes.json(); var rec=data.record||data;
+    var remoteMine=(rec.teamLists||[]).filter(function(l){return l.owner===S.userName;});
+    if((!S.myLists||!S.myLists.length) && remoteMine.length){
+      rehydrateMyLists(rec.teamLists);
+      throw new Error('Refusing to overwrite remote lists with empty local lists');
+    }
     // Merge: preserve others lists, add/update our own
     var otherLists=(rec.teamLists||[]).filter(function(l){return l.owner!==S.userName;});
     var merged=otherLists.concat(S.myLists);
+    var ku=(rec.knownUsers||[]).slice();
+    var kuIdx=ku.findIndex(function(u){return u.name===S.userName;});
+    var kuRec=buildUserRecord(S.userName,S.mode==='admin'?'admin':'team member');
+    if(kuIdx>=0) ku[kuIdx]=kuRec; else ku.push(kuRec);
     // Preserve catalogue fields exactly as they are in JSONBin
     var body=Object.assign({},rec,{
       teamLists:merged,
       requests:S.requests,
+      knownUsers:ku,
       updatedAt:Date.now()
     });
-    // Write headers - admin needs master key
-    var putHeaders={'Content-Type':'application/json'};
-    if(S.apiKey) putHeaders['X-Master-Key']=S.apiKey;
-    var putRes=await fetch(JSONBIN+'/b/'+S.binId,{method:'PUT',headers:putHeaders,body:JSON.stringify(body)});
+    var putRes=await fetch(JSONBIN+'/b/'+S.binId,{method:'PUT',headers:binPutHeaders(),body:JSON.stringify(body)});
     if(!putRes.ok) throw new Error('HTTP '+putRes.status);
     S.myLists.forEach(function(l){ S._listModifiedAt[l.id]=l.savedAt||Date.now(); });
     setSyncStatus('ok','Saved'); clearPending();
@@ -2552,7 +2622,7 @@ function generatePDF(shootName,shootDate,rawDate,locLabel,items,filter,includeVa
 // ── Init ──
 // ── Init ──
 document.addEventListener('DOMContentLoaded', function(){
-['nen3_binId','nen3_mode','nen3_apiKey','nen3_userName'].forEach(function(k){
+['nen3_binId','nen3_mode','nen3_apiKey','nen3_accessKey','nen3_userName'].forEach(function(k){
   var v=localStorage.getItem(k);
   if(v==='undefined'||v==='null') localStorage.removeItem(k);
 });
@@ -2588,6 +2658,7 @@ if(!window._catalogueMode && S.binId&&S.binId!=='undefined'&&S.binId!=='local'){
   } else {
     if($('viewer-name')) $('viewer-name').value=localStorage.getItem('nen3_viewerName')||S.userName||'';
     if($('viewer-bin-id')) $('viewer-bin-id').value=S.binId||'';
+    if($('viewer-access-key')) $('viewer-access-key').value=S.accessKey||'';
     showPanel('viewer');
   }
   if(S.userName&&S.binId){ launchApp(); }
