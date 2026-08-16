@@ -569,7 +569,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="modal-overlay" id="csv-modal" style="display:none" onclick="if(event.target===this)closeModal('csv-modal')">
   <div class="modal">
     <h3>Import CSV</h3>
-    <p class="modal-sub">Columns: name, location, category, qty, subitems, value, status. Subitems separated by semicolons. First row is header (skipped). Duplicate names are skipped.</p>
+    <p class="modal-sub">Columns: name, location, category, qty, subitems, value, status, sortOrder (optional). Subitems separated by semicolons. First row is header (skipped). Duplicate names are skipped; if sortOrder is present their order is updated.</p>
     <div class="field"><textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="name,location,category,qty,subitems&#10;Canon R5,Location A,Camera,2,Battery x2;Charger;Strap"></textarea></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeModal('csv-modal')">Cancel</button>
@@ -581,7 +581,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 <div class="toast" id="toast"></div>
 
 <script>
-VERSION = 'v1.8.2';
+VERSION = 'v1.8.3';
 var S = {
   mode:'admin', apiKey:'', accessKey:'', binId:'', userName:'',
   catalogue:[], locations:['Location A','Location B'],
@@ -2237,10 +2237,43 @@ async function deleteCategory(cat){
   renderCatTags(); renderFilters(); renderCatalogue(); await saveBin(); toast('Category removed');
 }
 
+function parseCSVLine(line){
+  var cols=[], cur='', inQ=false;
+  for(var ci=0;ci<line.length;ci++){ var ch=line[ci]; if(ch==='"'){inQ=!inQ;} else if(ch===','&&!inQ){cols.push(cur.trim());cur='';} else{cur+=ch;} }
+  cols.push(cur.trim());
+  return cols;
+}
+function csvUnquote(s){
+  return s?String(s).replace(/^"|"$/g,'').replace(/""/g,'"'):'';
+}
+function parseCSVSortOrder(raw){
+  if(raw==null||raw==='') return null;
+  var n=Number(csvUnquote(raw).trim());
+  return isFinite(n)?n:null;
+}
+function catalogueInDisplayOrder(){
+  var catOrd=sortedCategories();
+  var leftovers=[];
+  S.catalogue.forEach(function(item){
+    var c=item.category||'';
+    if(catOrd.indexOf(c)<0&&leftovers.indexOf(c)<0) leftovers.push(c);
+  });
+  leftovers.sort(function(a,b){return (a||'').localeCompare(b||'');});
+  var order=catOrd.concat(leftovers);
+  return S.catalogue.slice().sort(function(a,b){
+    var ai=order.indexOf(a.category||''), bi=order.indexOf(b.category||'');
+    if(ai!==bi) return ai-bi;
+    var as=a.sortOrder!=null?a.sortOrder:9999;
+    var bs=b.sortOrder!=null?b.sortOrder:9999;
+    if(as!==bs) return as-bs;
+    return (a.name||'').localeCompare(b.name||'');
+  });
+}
+
 function exportCSV(){
-  var header='name,location,category,qty,subitems,value,status';
-  var rows=S.catalogue.map(function(item){
-    return ['"'+(item.name||'').replace(/"/g,'""')+'"','"'+(item.location||'').replace(/"/g,'""')+'"','"'+(item.category||'').replace(/"/g,'""')+'"',item.qty||1,'"'+(item.subitems||[]).join(';').replace(/"/g,'""')+'"',item.value||0,'"'+(item.status||'working')+'"'].join(',');
+  var header='name,location,category,qty,subitems,value,status,sortOrder';
+  var rows=catalogueInDisplayOrder().map(function(item){
+    return ['"'+(item.name||'').replace(/"/g,'""')+'"','"'+(item.location||'').replace(/"/g,'""')+'"','"'+(item.category||'').replace(/"/g,'""')+'"',item.qty||1,'"'+(item.subitems||[]).join(';').replace(/"/g,'""')+'"',item.value||0,'"'+(item.status||'working')+'"',item.sortOrder!=null?item.sortOrder:''].join(',');
   });
   var csv=[header].concat(rows).join('\n');
   var blob=new Blob([csv],{type:'text/csv'});
@@ -2252,33 +2285,55 @@ function exportCSV(){
 
 async function importCSV(){
   var raw=$('csv-input').value.trim(); if(!raw){ toast('Paste CSV data first'); return; }
-  var lines=raw.split('\n').slice(1); var added=0; var skipped=0;
+  var allLines=raw.split('\n');
+  var headerCols=parseCSVLine(allLines[0]||'');
+  var hasSortCol=headerCols.length>=8||headerCols.some(function(c){return csvUnquote(c).trim().toLowerCase()==='sortorder';});
+  var lines=allLines.slice(1); var added=0; var skipped=0; var updated=0;
+  var mentionedCats=[];
   lines.forEach(function(line){
     if(!line.trim()) return;
-    var cols=[]; var cur=''; var inQ=false;
-    for(var ci=0;ci<line.length;ci++){ var ch=line[ci]; if(ch==='"'){inQ=!inQ;} else if(ch===','&&!inQ){cols.push(cur.trim());cur='';} else{cur+=ch;} }
-    cols.push(cur.trim());
-    var name=cols[0]&&cols[0].replace(/^"|"$/g,'').replace(/""/g,'"');
-    var location=cols[1]&&cols[1].replace(/^"|"$/g,'').replace(/""/g,'"');
-    var category=cols[2]&&cols[2].replace(/^"|"$/g,'').replace(/""/g,'"');
+    var cols=parseCSVLine(line);
+    var name=csvUnquote(cols[0]);
+    var location=csvUnquote(cols[1]);
+    var category=csvUnquote(cols[2]);
     var qty=cols[3];
-    var subsRaw=cols[4]&&cols[4].replace(/^"|"$/g,'').replace(/""/g,'"');
+    var subsRaw=csvUnquote(cols[4]);
     var value=parseFloat(cols[5])||0;
     if(!name) return;
-    if(S.catalogue.some(function(x){return x.name.toLowerCase()===name.toLowerCase();})){skipped++;return;}
+    if(hasSortCol&&category&&S.categories.indexOf(category)>=0&&mentionedCats.indexOf(category)<0) mentionedCats.push(category);
+    var parsedSort=hasSortCol?parseCSVSortOrder(cols[7]):null;
+    var existing=S.catalogue.find(function(x){return x.name.toLowerCase()===name.toLowerCase();});
+    if(existing){
+      if(parsedSort!=null&&existing.sortOrder!==parsedSort){ existing.sortOrder=parsedSort; updated++; }
+      skipped++;
+      return;
+    }
     var loc=S.locations.includes(location)?location:S.locations[0];
     var cat=S.categories.includes(category)?category:'(none)';
     var subitems=subsRaw?subsRaw.split(';').map(function(s){return s.trim();}).filter(Boolean):[];
     var catItemsI=S.catalogue.filter(function(x){return x.category===cat;});
     var maxSortI=catItemsI.reduce(function(m,x){return Math.max(m,x.sortOrder||0);},0);
-    var itemStatus=cols[6]?cols[6].replace(/^"|"$/g,'').trim():'working';
+    var itemStatus=cols[6]?csvUnquote(cols[6]).trim():'working';
     if(itemStatus!=='oos') itemStatus='working';
-    S.catalogue.push({id:S.nextId++,name:name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems:subitems,value:value,status:itemStatus,sortOrder:maxSortI+1});
+    var sortOrder=parsedSort!=null?parsedSort:maxSortI+1;
+    S.catalogue.push({id:S.nextId++,name:name,location:loc,category:cat,qty:Math.max(1,parseInt(qty)||1),subitems:subitems,value:value,status:itemStatus,sortOrder:sortOrder});
     added++;
   });
-  closeModal('csv-modal'); renderCatalogue(); await saveBin();
-  var skippedMsg=skipped>0?' ('+skipped+' duplicate'+(skipped!==1?'s':'')+' skipped)':'';
-  toast('Imported '+added+' item'+(added!==1?'s':'')+skippedMsg);
+  if(hasSortCol&&mentionedCats.length){
+    var restOrdered=[];
+    var existingOrder=S.categoryOrder.length?S.categoryOrder:S.categories;
+    existingOrder.forEach(function(c){
+      if(mentionedCats.indexOf(c)<0&&S.categories.indexOf(c)>=0&&restOrdered.indexOf(c)<0) restOrdered.push(c);
+    });
+    S.categories.forEach(function(c){ if(mentionedCats.indexOf(c)<0&&restOrdered.indexOf(c)<0) restOrdered.push(c); });
+    S.categoryOrder=mentionedCats.concat(restOrdered);
+    S.categories=mentionedCats.concat(restOrdered);
+  }
+  closeModal('csv-modal'); renderFilters(); renderCatalogue(); renderList(); await saveBin();
+  var extra=[];
+  if(updated) extra.push(updated+' order updated');
+  if(skipped) extra.push(skipped+' duplicate'+(skipped!==1?'s':'')+' skipped');
+  toast('Imported '+added+' item'+(added!==1?'s':'')+(extra.length?' ('+extra.join(', ')+')':''));
 }
 
 async function submitRequest(){
